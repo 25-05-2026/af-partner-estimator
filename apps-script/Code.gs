@@ -49,6 +49,13 @@ function doPost(e) {
   if (settings.capture_key && data.key !== settings.capture_key) return json_({ ok: false, error: 'bad key' });
   delete data.key;
   data.received = new Date();
+  // Look up the lender from the private Rates tab using the matched tier id.
+  if (data.matched_tier) {
+    const rows = sheet_(TAB_RATES).getDataRange().getValues();
+    const h = rows[0], iId = h.indexOf('id'), iL = h.indexOf('lender');
+    const hit = rows.find(r => String(r[iId]) === String(data.matched_tier));
+    if (hit && iL > -1) data.matched_lender = hit[iL];
+  }
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -86,7 +93,8 @@ function getRateCard_() {
     .filter(r => r.some(c => c !== ''))
     .map(r => {
       const o = {};
-      headers.forEach((h, i) => { if (h) o[h] = r[i] instanceof Date ? r[i].toISOString() : r[i]; });
+      // Lender names and notes stay private: partners only ever receive the tier id.
+      headers.forEach((h, i) => { if (h && h !== 'lender' && h !== 'notes') o[h] = r[i] instanceof Date ? r[i].toISOString() : r[i]; });
       return o;
     });
 

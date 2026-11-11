@@ -755,7 +755,7 @@ function buildPayload(ref, action) {
     indicative_rate: r.tier ? r.tier.rate : '',
     est_fee: r.tier ? r.tier.estFee : '', monthly_fee: r.tier ? r.tier.monthlyFee : '',
     brokerage: r.brokerage || '', naf: r.naf ? Math.round(r.naf * 100) / 100 : '',
-    matched_tier: r.tier ? r.tier.id : '', matched_lender: r.tier ? r.tier.lender : '',
+    matched_tier: r.tier ? r.tier.id : '',
     rates_version: RATES.version, rates_updated: RATES.updated,
     page: location.href.split('?')[0], user_agent: navigator.userAgent
   };
