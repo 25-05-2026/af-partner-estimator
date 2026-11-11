@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Vehicle Finance Estimator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1A2138; --navy-2:#252E4F; --navy-3:#0F1424;
+    --green:#8DC63F; --green-dk:#74A832; --green-dk2:#5C8A28; --green-soft:#EEF6E0;
+    --ink:#0F1424; --body:#374151; --muted:#6B7280; --line:#E5E7EB; --bg-alt:#F7F9FB;
+    --danger:#B42318; --danger-soft:#FEF3F2; --warn:#8A5A00; --warn-soft:#FFF6E0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:Inter,"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    color:var(--body); background:var(--bg-alt); line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  button,input,select{font:inherit}
+  .wrap{max-width:1080px; margin:0 auto; position:relative; z-index:1}
+
+  /* Top bar */
+  .topbar{background:#fff; border-bottom:1px solid var(--line); padding:10px 16px}
+  .topbar .wrap{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .brand-logo{height:52px; width:auto; display:block}
+  .brand-divider{width:1px; height:36px; background:var(--line)}
+  .brand-sub{color:var(--green-dk2); font-weight:800; font-size:.85rem; text-transform:uppercase; letter-spacing:.14em}
+  .who{margin-left:auto; font-size:.85rem; color:var(--muted); text-align:right}
+  .who strong{color:var(--ink)}
+  .linkbtn{background:none; border:none; color:var(--green-dk2); font-weight:700; cursor:pointer; padding:0; text-decoration:underline}
+
+  .sample{background:var(--warn-soft); color:var(--warn); font-weight:600; font-size:.88rem; padding:10px 16px; text-align:center; border-bottom:1px solid #F3DFA8}
+
+  /* Header */
+  .hdr{background:radial-gradient(120% 140% at 100% 0%, var(--navy-2), var(--navy) 55%, var(--navy-3)); color:#fff; padding:34px 16px 84px; position:relative; overflow:hidden}
+  .hdr::before,.hdr::after{content:""; position:absolute; border-radius:50%; filter:blur(60px); opacity:.35; pointer-events:none}
+  .hdr::before{width:420px; height:420px; background:var(--green); top:-220px; right:-80px; animation:drift 24s ease-in-out infinite}
+  .hdr::after{width:360px; height:360px; background:#3A4777; bottom:-220px; left:-60px; animation:drift 30s ease-in-out infinite reverse}
+  @keyframes drift{0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,30px)}}
+  @media (prefers-reduced-motion:reduce){.hdr::before,.hdr::after{animation:none}}
+  .eyebrow{font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--green); font-weight:700}
+  .hdr h1{margin:6px 0 8px; font-size:clamp(1.6rem,3.4vw,2.3rem); letter-spacing:-.028em; line-height:1.1}
+  .hdr p{margin:0; color:#C9CEDC; max-width:620px}
+
+  /* Layout */
+  main{padding:0 16px 40px}
+  .grid{display:grid; grid-template-columns:1.15fr .85fr; gap:20px; margin-top:-56px; align-items:start}
+  @media (max-width:860px){ .grid{grid-template-columns:1fr} }
+  .card{background:#fff; border:1px solid var(--line); border-radius:14px; padding:24px; box-shadow:0 10px 30px rgba(15,20,36,.06)}
+  .stack{display:grid; gap:20px}
+  .sec-h{display:flex; align-items:center; gap:10px; margin:0 0 18px}
+  .sec-h .n{width:28px; height:28px; border-radius:50%; background:var(--navy); color:#fff; font-weight:800; font-size:.85rem; display:grid; place-items:center; flex:none}
+  .sec-h h2{margin:0; font-size:1.1rem; letter-spacing:-.018em; color:var(--ink)}
+
+  .field{margin-bottom:20px}
+  .field:last-child{margin-bottom:0}
+  .label{display:block; font-weight:700; color:var(--ink); font-size:.92rem; margin-bottom:8px}
+  .label .opt{font-weight:500; color:var(--muted)}
+  .hint{font-size:.8rem; color:var(--muted); margin-top:6px}
+  .hint.strong{color:var(--green-dk2); font-weight:600}
+
+  /* Segmented controls */
+  .seg{display:flex; flex-wrap:wrap; gap:8px}
+  .seg button{
+    flex:1 1 0; min-width:max-content; border:1.5px solid var(--line); background:#fff; color:var(--ink);
+    border-radius:999px; padding:10px 14px; font-weight:600; cursor:pointer; transition:all .15s;
+  }
+  .seg button:hover{border-color:var(--green)}
+  .seg button[aria-pressed="true"]{background:var(--navy); border-color:var(--navy); color:#fff}
+  .seg button:disabled{opacity:.35; cursor:not-allowed}
+  .seg.terms{display:grid; grid-template-columns:repeat(7,1fr)}
+  .seg.terms button{min-width:0; padding:10px 0; white-space:nowrap; font-size:.9rem}
+  @media (max-width:560px){ .seg.terms{grid-template-columns:repeat(4,1fr)} }
+  .need .seg button{border-color:#F1C9C4}
+
+  select,.txt,.money input{
+    width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:10px;
+    font-size:1rem; font-weight:600; color:var(--ink); background:#fff; outline:none;
+  }
+  select{appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 20px) 52%,calc(100% - 14px) 52%; background-size:6px 6px; background-repeat:no-repeat; padding-right:36px}
+  select:focus,.txt:focus,.money input:focus{border-color:var(--green); box-shadow:0 0 0 4px var(--green-soft)}
+  .need select{border-color:#F1C9C4}
+  .money{position:relative}
+  .money span{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-weight:600}
+  .money input{padding-left:30px; font-size:1.05rem}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media (max-width:520px){ .two{grid-template-columns:1fr} }
+
+  /* Residual */
+  .resid{display:flex; align-items:center; gap:14px}
+  .resid input[type=range]{flex:1; accent-color:var(--green-dk)}
+  .resid output{min-width:130px; text-align:right; font-weight:700; color:var(--ink)}
+
+  .opt-box{border-top:1px dashed var(--line); padding-top:18px; margin-top:4px}
+  .check{display:flex; gap:10px; align-items:flex-start; font-size:.88rem; color:var(--body); cursor:pointer}
+  .check input{margin-top:3px; width:18px; height:18px; accent-color:var(--green-dk); flex:none}
+
+  /* Result panel */
+  .result{background:radial-gradient(130% 120% at 100% 0%, var(--navy-2), var(--navy) 60%); color:#fff; border:none; position:sticky; top:16px}
+  @media (max-width:860px){ .result{position:static} }
+  .big{font-size:clamp(2.4rem,6vw,3.3rem); font-weight:800; letter-spacing:-.03em; line-height:1.05; margin:10px 0 2px}
+  .per{color:#C9CEDC; font-weight:500}
+  .rows{margin:20px 0 0; padding:16px 0 0; border-top:1px solid rgba(255,255,255,.12)}
+  .row{display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:.92rem}
+  .row dt{color:#C9CEDC} .row dd{margin:0; font-weight:700; color:#fff; text-align:right}
+  .msg{border-radius:10px; padding:12px 14px; font-weight:600; font-size:.92rem; margin-top:14px}
+  .msg.err{background:var(--danger-soft); color:var(--danger)}
+  .msg.info{background:rgba(255,255,255,.08); color:#E4E7F0; border:1px solid rgba(255,255,255,.14)}
+  .msg ul{margin:6px 0 0; padding-left:18px; font-weight:500}
+  .actions{margin-top:22px; display:flex; gap:10px; flex-wrap:wrap}
+  .btn{
+    border:none; border-radius:999px; padding:12px 20px; font-weight:700; cursor:pointer;
+    background:var(--green); color:var(--navy-3); box-shadow:0 8px 20px rgba(141,198,63,.36);
+  }
+  .btn:hover{background:var(--green-dk)}
+  .btn:disabled{opacity:.4; cursor:not-allowed; box-shadow:none}
+  .btn.ghost{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.3); box-shadow:none}
+  .btn.ghost:hover{border-color:var(--green)}
+  .btn.block{width:100%}
+  .saved{margin-top:14px; font-size:.88rem; color:#C9CEDC}
+  .saved strong{color:var(--green)}
+  .fine{margin-top:16px; font-size:.75rem; color:#9BA3BA; line-height:1.5}
+
+  /* Term comparison */
+  .compare{margin-top:20px}
+  .compare h2{font-size:1.1rem; letter-spacing:-.018em; color:var(--ink); margin:0 0 4px}
+  .compare .sub{color:var(--muted); font-size:.88rem; margin:0 0 16px}
+  .bars{display:grid; grid-template-columns:repeat(7,1fr); gap:10px; align-items:end}
+  @media (max-width:600px){ .bars{grid-template-columns:repeat(4,1fr)} }
+  .bar{border:1.5px solid var(--line); border-radius:12px; padding:12px 6px; text-align:center; cursor:pointer; background:#fff; transition:all .15s}
+  .bar:hover{border-color:var(--green); transform:translateY(-2px)}
+  .bar[aria-pressed="true"]{border-color:var(--green); background:var(--green-soft)}
+  .bar .yr{font-size:.78rem; color:var(--muted); font-weight:600}
+  .bar .amt{font-weight:800; color:var(--ink); font-size:.98rem; letter-spacing:-.01em; margin-top:2px}
+  .bar .amt.na{color:var(--muted); font-weight:600; font-size:.8rem}
+  .bar .fill{height:6px; border-radius:999px; background:var(--line); margin-top:10px; overflow:hidden}
+  .bar .fill i{display:block; height:100%; background:var(--green)}
+
+  .disclaimer{margin:20px 0 0; font-size:.8rem; color:var(--muted); line-height:1.6; background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 18px}
+  .disclaimer strong{color:var(--body)}
+
+  /* Disclaimer gate */
+  .gate{position:fixed; inset:0; background:rgba(15,20,36,.72); backdrop-filter:blur(4px); display:grid; place-items:center; padding:16px; z-index:50; overflow:auto}
+  .gate[hidden]{display:none}
+  .gate .panel{background:#fff; border-radius:16px; max-width:560px; width:100%; padding:28px; box-shadow:0 30px 80px rgba(0,0,0,.35)}
+  .gate h2{margin:6px 0 12px; color:var(--ink); letter-spacing:-.02em; font-size:1.45rem}
+  .gate .eyebrow{color:var(--green-dk2)}
+  .gate .terms-box{background:var(--bg-alt); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:.88rem; max-height:40vh; overflow:auto; margin-bottom:18px}
+  .gate .terms-box p{margin:0 0 10px} .gate .terms-box p:last-child{margin:0}
+  .gate .btn{box-shadow:none}
+
+  .print-only{display:none}
+  @media print{
+    body{background:#fff}
+    .hdr{background:none; color:var(--ink); padding:16px}
+    .hdr::before,.hdr::after,.hdr p,.sample,.who,.actions,.gate,.no-print{display:none !important}
+    .hdr h1{color:var(--ink)}
+    .grid{margin-top:8px; grid-template-columns:1fr 1fr}
+    .card{box-shadow:none; break-inside:avoid; padding:16px}
+    .result{position:static}
+    .result,.seg button[aria-pressed="true"],.bar[aria-pressed="true"],.sec-h .n{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .print-only{display:block}
+    .compare{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Disclaimer gate: shown before the calculator can be used ===== -->
+<div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <div class="panel">
+    <div class="eyebrow">Before you start</div>
+    <h2 id="gateTitle">For indicative purposes only</h2>
+    <div class="terms-box">
+      <p><strong>This calculator provides indicative repayment estimates only.</strong> It is not a quote, an offer, a pre-approval or an approval of credit, and no rate or repayment is guaranteed.</p>
+      <p>Actual rates, fees and repayments depend on a full credit assessment of the applicant, verification of the information provided, the vehicle being financed and each lender's criteria at the time of application. Lender rates and policies change regularly and without notice.</p>
+      <p>Please do not tell a client they are approved, qualify for a particular rate or will receive a particular repayment. Refer all clients to Acquired Financial Services for a formal assessment and quote.</p>
+      <p>Details you save in this tool are sent to Acquired Financial Services so we know how each estimate was worked out. Only enter client details with the client's permission.</p>
+      <p>Acquired Financial Services, Australian Credit Licence 488607.</p>
+    </div>
+    <div class="field">
+      <div class="two">
+        <div><label class="label" for="gName">Your name</label><input class="txt" id="gName" autocomplete="name"></div>
+        <div><label class="label" for="gBiz">Your business</label><input class="txt" id="gBiz" autocomplete="organization"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="gAck"> <span>I understand this calculator is for indicative purposes only and is not a quote, offer or approval of credit.</span></label>
+    </div>
+    <button type="button" class="btn block" id="gGo" disabled>Continue to calculator</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="wrap">
+    <img class="brand-logo" src="logo.png" alt="Acquired Financial Services">
+    <span class="brand-divider" aria-hidden="true"></span>
+    <span class="brand-sub">Partner Estimator</span>
+    <div class="who" id="who"></div>
+  </div>
+</div>
+<div class="sample" id="sampleBanner" hidden>Sample rates loaded. These are placeholder figures, not live lender rates.</div>
+
+<header class="hdr">
+  <div class="wrap">
+    <div class="eyebrow">Indicative purposes only</div>
+    <h1>Vehicle finance repayment estimator</h1>
+    <p>Indicative repayments for consumer and commercial vehicle loans. Not a quote, offer or approval of credit.</p>
+    <p class="print-only" id="printMeta"></p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="grid">
+
+      <div class="stack">
+        <!-- 1. Vehicle -->
+        <section class="card" aria-labelledby="h1v">
+          <div class="sec-h"><span class="n">1</span><h2 id="h1v">The vehicle</h2></div>
+          <div class="field" id="fYear">
+            <label class="label" for="year">Year of manufacture</label>
+            <select id="year"></select>
+            <div class="hint strong" id="ageHint"></div>
+          </div>
+          <div class="field">
+            <span class="label" id="lblType">Loan type</span>
+            <div class="seg" role="group" aria-labelledby="lblType" data-key="loanType">
+              <button type="button" data-val="consumer">Consumer</button>
+              <button type="button" data-val="commercial">Commercial (ABN)</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Client -->
+        <section class="card" aria-labelledby="h2c">
+          <div class="sec-h"><span class="n">2</span><h2 id="h2c">The client</h2></div>
+
+          <div id="consumerQs">
+            <div class="field" data-req="residential">
+              <span class="label" id="lblRes">Residential status</span>
+              <div class="seg" role="group" aria-labelledby="lblRes" data-key="residential">
+                <button type="button" data-val="buying">Buying</button>
+                <button type="button" data-val="owning">Owning</button>
+                <button type="button" data-val="renting">Renting</button>
+                <button type="button" data-val="boarding">Boarding</button>
+              </div>
+            </div>
+            <div class="field" data-req="employment">
+              <span class="label" id="lblEmp">Employment status</span>
+              <div class="seg" role="group" aria-labelledby="lblEmp" data-key="employment">
+                <button type="button" data-val="full_time">Full time</button>
+                <button type="button" data-val="part_time">Part time</button>
+                <button type="button" data-val="casual">Casual</button>
+              </div>
+            </div>
+            <div class="field" data-req="jobMonths">
+              <label class="label" for="jobMonths">Time in current job</label>
+              <select id="jobMonths" data-key="jobMonths">
+                <option value="">Select</option>
+                <option value="0">Under 3 months</option>
+                <option value="3">3 to 6 months</option>
+                <option value="6">6 to 12 months</option>
+                <option value="12">1 to 2 years</option>
+                <option value="24">2 years or more</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="commercialQs" hidden>
+            <div class="field" data-req="assetBacked">
+              <span class="label" id="lblAsset">Asset backed?</span>
+              <div class="seg" role="group" aria-labelledby="lblAsset" data-key="assetBacked">
+                <button type="button" data-val="yes">Yes</button>
+                <button type="button" data-val="no">No</button>
+              </div>
+              <div class="hint" id="assetHint">Owns or is paying off property. Non asset backed clients need at least a 20% deposit.</div>
+            </div>
+            <div class="field" data-req="gst">
+              <span class="label" id="lblGst">GST registered?</span>
+              <div class="seg" role="group" aria-labelledby="lblGst" data-key="gst">
+                <button type="button" data-val="yes">Yes</button>
+                <button type="button" data-val="no">No</button>
+              </div>
+            </div>
+            <div class="field" data-req="compCredit">
+              <span class="label" id="lblComp">Comparable credit?</span>
+              <div class="seg" role="group" aria-labelledby="lblComp" data-key="compCredit">
+                <button type="button" data-val="yes">Yes</button>
+                <button type="button" data-val="no">No</button>
+              </div>
+              <div class="hint">A previous vehicle or similar loan of a comparable size, paid on time.</div>
+            </div>
+            <div class="field" data-req="abnMonths">
+              <label class="label" for="abnMonths">How long has the ABN been running?</label>
+              <select id="abnMonths" data-key="abnMonths">
+                <option value="">Select</option>
+                <option value="0">Under 6 months</option>
+                <option value="6">6 to 12 months</option>
+                <option value="12">1 to 2 years</option>
+                <option value="24">2 to 4 years</option>
+                <option value="48">4 years or more</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="opt-box">
+            <div class="field">
+              <div class="two">
+                <div><label class="label" for="cName">Client name <span class="opt">(optional)</span></label><input class="txt" id="cName" autocomplete="off"></div>
+                <div><label class="label" for="cPhone">Client mobile <span class="opt">(optional)</span></label><input class="txt" id="cPhone" inputmode="tel" autocomplete="off"></div>
+              </div>
+            </div>
+            <div class="field" id="consentField" hidden>
+              <label class="check"><input type="checkbox" id="cConsent"> <span>The client agrees to share these details with Acquired Financial Services so we can contact them about this estimate.</span></label>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Loan -->
+        <section class="card" aria-labelledby="h3l">
+          <div class="sec-h"><span class="n">3</span><h2 id="h3l">The loan</h2></div>
+          <div class="field two">
+            <div>
+              <label class="label" for="price">Vehicle price</label>
+              <div class="money"><span>$</span><input id="price" inputmode="decimal" autocomplete="off" value="45,000"></div>
+              <div class="hint">Drive away, GST inclusive</div>
+            </div>
+            <div>
+              <label class="label" for="deposit">Deposit or trade in</label>
+              <div class="money"><span>$</span><input id="deposit" inputmode="decimal" autocomplete="off" value="0"></div>
+              <div class="hint" id="depHint">Optional</div>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label" id="lblTerm">Loan term</span>
+            <div class="seg terms" role="group" aria-labelledby="lblTerm" id="termSeg"></div>
+          </div>
+          <div class="field">
+            <span class="label" id="lblFreq">Repayment frequency</span>
+            <div class="seg" role="group" aria-labelledby="lblFreq" id="freqSeg"></div>
+            <div class="hint" id="freqHint"></div>
+          </div>
+          <div class="field" id="residField" hidden>
+            <label class="label" for="resid">Residual (balloon)</label>
+            <div class="resid">
+              <input type="range" id="resid" min="0" max="30" step="1" value="0">
+              <output id="residOut" for="resid">0%</output>
+            </div>
+            <div class="hint" id="residHint"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Result -->
+      <aside class="card result" aria-live="polite" aria-label="Estimated repayment">
+        <div class="eyebrow" id="resEyebrow">Estimated repayment</div>
+        <div id="resOk">
+          <div class="big" id="resAmount">$0.00</div>
+          <div class="per" id="resPer">per month</div>
+        </div>
+        <div class="msg info" id="resInfo" hidden></div>
+        <div class="msg err" id="resErr" hidden></div>
+        <dl class="rows" id="resRows"></dl>
+        <div class="actions">
+          <button type="button" class="btn" id="saveBtn">Save estimate</button>
+          <button type="button" class="btn ghost" id="printBtn">Print</button>
+          <button type="button" class="btn ghost" id="resetBtn">Reset</button>
+        </div>
+        <div class="saved" id="savedMsg" hidden></div>
+        <div class="fine">Indicative only. Not a quote, offer or approval of credit. Subject to full credit assessment and lender criteria. <span id="ratesStamp"></span></div>
+      </aside>
+    </div>
+
+    <section class="card compare" aria-label="Repayments by term">
+      <h2>Compare loan terms</h2>
+      <p class="sub" id="compareSub"></p>
+      <div class="bars" id="bars"></div>
+    </section>
+
+    <p class="disclaimer">
+      <strong>For indicative purposes only.</strong> This calculator provides an estimate for illustration purposes only and does not constitute a quote, an offer, a pre-approval or an approval of credit. All applications are subject to full credit assessment, verification, lender criteria and approval. Rates, fees and lender policies change without notice. Estimates include establishment and account keeping fees where they apply and assume repayments are made on time. Acquired Financial Services, Australian Credit Licence 488607. Phone 1300 235 255.
+    </p>
+  </div>
+</main>
+
+<script>
+/* =========================================================
+   SETTINGS
+   apiUrl: the Google Apps Script web app URL. It supplies live
+   rates and receives saved estimates. Leave blank to use the
+   local rates.json and keep saved estimates on this device.
+   ========================================================= */
+const CONFIG = {
+  apiUrl: '',
+  captureKey: '',            // must match capture_key in the Settings sheet, if set there
+  localRatesFile: 'rates.json',
+  vehicleYearsBack: 25
+};
+/* ========================================================= */
+
+const TERMS = [12, 24, 36, 48, 60, 72, 84];
+const FREQ = {
+  weekly:      { label: 'Weekly',      perYear: 52, per: 'per week' },
+  fortnightly: { label: 'Fortnightly', perYear: 26, per: 'per fortnight' },
+  monthly:     { label: 'Monthly',     perYear: 12, per: 'per month' }
+};
+const LABELS = {
+  loanType: { consumer: 'Consumer', commercial: 'Commercial' },
+  residential: { buying: 'Buying', owning: 'Owning', renting: 'Renting', boarding: 'Boarding' },
+  employment: { full_time: 'Full time', part_time: 'Part time', casual: 'Casual' },
+  yesno: { yes: 'Yes', no: 'No' }
+};
+const REQUIRED = {
+  consumer:   [['residential','Residential status'], ['employment','Employment status'], ['jobMonths','Time in current job']],
+  commercial: [['assetBacked','Asset backed'], ['gst','GST registered'], ['compCredit','Comparable credit'], ['abnMonths','ABN time running']]
+};
+const THIS_YEAR = new Date().getFullYear();
+
+const $ = id => document.getElementById(id);
+const money = (n, dp = 2) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const parseMoney = s => { const n = parseFloat(String(s).replace(/[^0-9.]/g, '')); return isFinite(n) ? n : 0; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const store = {
+  get(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+let RATES = { settings: {}, tiers: [] };
+const S = () => RATES.settings;
+const state = {
+  loanType: 'consumer', year: '', term: 60, freq: 'monthly', residualPct: 0,
+  residential: '', employment: '', jobMonths: '',
+  assetBacked: '', gst: '', compCredit: '', abnMonths: ''
+};
+let lastSaved = null;   // { sig, ref }
+
+/* ---------- Rates loading (live sheet, then cache, then local file) ---------- */
+const norm = v => String(v ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+const num = v => (v === '' || v === null || v === undefined || isNaN(+v)) ? null : +v;
+const yn = v => { const s = norm(v); return s === '' ? null : ['y','yes','true','1'].includes(s); };
+const list = v => String(v ?? '').split(',').map(norm).filter(Boolean);
+
+function normaliseRates(raw) {
+  const st = raw.settings || {};
+  const settings = {
+    showRate: yn(st.showRate) === true,
+    maxTermMonths: num(st.maxTermMonths) ?? 84,
+    residualMaxPct: num(st.residualMaxPct) ?? 30,
+    residualMaxTermMonths: num(st.residualMaxTermMonths) ?? 60,
+    residualBase: norm(st.residualBase) === 'naf' ? 'naf' : 'price',
+    nonAssetBackedMinDepositPct: num(st.nonAssetBackedMinDepositPct) ?? 20,
+    freqs: {
+      consumer: list(st.consumerFreqs || 'weekly,fortnightly,monthly').filter(f => FREQ[f]),
+      commercial: list(st.commercialFreqs || 'monthly').filter(f => FREQ[f])
+    },
+    inAdvance: { consumer: yn(st.consumerInAdvance) === true, commercial: yn(st.commercialInAdvance) === true }
+  };
+  const tiers = (raw.tiers || []).filter(t => yn(t.active) !== false && num(t.rate) !== null).map(t => ({
+    id: String(t.id || ''), lender: String(t.lender || ''), tier: String(t.tier || ''),
+    loanType: norm(t.loan_type),
+    ageMin: num(t.vehicle_age_min), ageMax: num(t.vehicle_age_max), ageEndMax: num(t.age_at_end_max),
+    residential: list(t.residential), employment: list(t.employment), jobMonthsMin: num(t.job_months_min),
+    assetBacked: yn(t.asset_backed), gst: yn(t.gst_registered), compCredit: yn(t.comparable_credit), abnMonthsMin: num(t.abn_months_min),
+    minDepositPct: num(t.min_deposit_pct),
+    rate: num(t.rate), estFee: num(t.est_fee) ?? 0, monthlyFee: num(t.monthly_fee) ?? 0, brokeragePct: num(t.brokerage_pct) ?? 0,
+    minLoan: num(t.min_loan), maxLoan: num(t.max_loan), maxTerm: num(t.max_term_months), maxResidualPct: num(t.max_residual_pct)
+  }));
+  return { version: String(raw.version || ''), updated: String(raw.updated || ''), sample: yn(raw.sample) === true, settings, tiers };
+}
+
+async function loadRates() {
+  if (CONFIG.apiUrl) {
+    try {
+      const r = await fetch(CONFIG.apiUrl + '?action=rates', { cache: 'no-store' });
+      const data = await r.json();
+      if (!data.tiers) throw new Error('bad rates');
+      store.set('af_rates_cache', data);
+      return normaliseRates(data);
+    } catch (e) {
+      const cached = store.get('af_rates_cache');
+      if (cached) return Object.assign(normaliseRates(cached), { offline: true });
+    }
+  }
+  const r = await fetch(CONFIG.localRatesFile, { cache: 'no-store' });
+  return normaliseRates(await r.json());
+}
+
+/* ---------- Maths ---------- */
+// Repayment with optional residual. Arrears by default, advance if set.
+function repayment(P, ratePct, months, perYear, residual, inAdvance) {
+  const n = Math.round(months / 12 * perYear);
+  const r = ratePct / 100 / perYear;
+  let pmt = r === 0 ? (P - residual) / n : (P - residual * Math.pow(1 + r, -n)) * r / (1 - Math.pow(1 + r, -n));
+  if (inAdvance && r !== 0) pmt = pmt / (1 + r);
+  return pmt;
+}
+
+function vehicleAge() { return state.year === '' ? null : Math.max(0, THIS_YEAR - +state.year); }
+function residualAllowed(term) { return state.loanType === 'commercial' && term <= S().residualMaxTermMonths; }
+
+function tierMatches(t, c) {
+  if (t.loanType !== c.loanType) return false;
+  if (t.ageMin !== null && c.age < t.ageMin) return false;
+  if (t.ageMax !== null && c.age > t.ageMax) return false;
+  if (t.ageEndMax !== null && c.age + c.term / 12 > t.ageEndMax) return false;
+  if (t.maxTerm !== null && c.term > t.maxTerm) return false;
+  if (t.minLoan !== null && c.financed < t.minLoan) return false;
+  if (t.maxLoan !== null && c.financed > t.maxLoan) return false;
+  if (t.minDepositPct !== null && c.depositPct < t.minDepositPct) return false;
+  if (c.residualPct > 0 && t.maxResidualPct !== null && c.residualPct > t.maxResidualPct) return false;
+  if (c.loanType === 'consumer') {
+    if (t.residential.length && !t.residential.includes(c.residential)) return false;
+    if (t.employment.length && !t.employment.includes(c.employment)) return false;
+    if (t.jobMonthsMin !== null && c.jobMonths < t.jobMonthsMin) return false;
+  } else {
+    if (t.assetBacked !== null && t.assetBacked !== (c.assetBacked === 'yes')) return false;
+    if (t.gst !== null && t.gst !== (c.gst === 'yes')) return false;
+    if (t.compCredit !== null && t.compCredit !== (c.compCredit === 'yes')) return false;
+    if (t.abnMonthsMin !== null && c.abnMonths < t.abnMonthsMin) return false;
+  }
+  return true;
+}
+
+function calc(term) {
+  const price = parseMoney($('price').value);
+  const deposit = parseMoney($('deposit').value);
+  const financed = price - deposit;
+  const depositPct = price > 0 ? deposit / price * 100 : 0;
+  const residualPct = residualAllowed(term) ? state.residualPct : 0;
+  const out = { status: 'ok', price, deposit, financed, depositPct, residualPct, term, freq: FREQ[state.freq] };
+
+  const missing = [];
+  if (state.year === '') missing.push('Year of manufacture');
+  REQUIRED[state.loanType].forEach(([k, l]) => { if (state[k] === '') missing.push(l); });
+  if (price <= 0) missing.push('Vehicle price');
+  if (missing.length) return Object.assign(out, { status: 'incomplete', missing });
+
+  if (deposit >= price) return Object.assign(out, { status: 'error', message: 'The deposit must be less than the vehicle price.' });
+  const minDep = S().nonAssetBackedMinDepositPct;
+  if (state.loanType === 'commercial' && state.assetBacked === 'no' && depositPct + 1e-9 < minDep) {
+    return Object.assign(out, { status: 'error', message: `Non asset backed clients need a deposit of at least ${minDep}% (${money(Math.ceil(price * minDep / 100), 0)}).` });
+  }
+
+  const ctx = {
+    loanType: state.loanType, age: vehicleAge(), term, financed, depositPct, residualPct,
+    residential: state.residential, employment: state.employment, jobMonths: +state.jobMonths,
+    assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths
+  };
+  const f = FREQ[state.freq];
+  const inAdv = S().inAdvance[state.loanType];
+  let best = null;
+  RATES.tiers.filter(t => tierMatches(t, ctx)).forEach(t => {
+    const brokerage = Math.round(financed * t.brokeragePct) / 100;
+    const naf = financed + t.estFee + brokerage;
+    const residual = Math.round((S().residualBase === 'naf' ? naf : price) * residualPct) / 100;
+    const amount = repayment(naf, t.rate, term, f.perYear, residual, inAdv) + t.monthlyFee * 12 / f.perYear;
+    if (!best || amount < best.amount) best = { tier: t, brokerage, naf, residual, amount };
+  });
+  if (!best) return Object.assign(out, { status: 'nomatch' });
+  return Object.assign(out, best, { count: Math.round(term / 12 * f.perYear) });
+}
+
+/* ---------- UI ---------- */
+function buildYears() {
+  const sel = $('year');
+  let h = '<option value="">Select year</option>';
+  for (let y = THIS_YEAR; y >= THIS_YEAR - CONFIG.vehicleYearsBack; y--) h += `<option value="${y}">${y}${y === THIS_YEAR ? ' (new)' : ''}</option>`;
+  sel.innerHTML = h;
+}
+
+function buildTerms() {
+  const seg = $('termSeg'); seg.innerHTML = '';
+  TERMS.filter(m => m <= S().maxTermMonths).forEach(m => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.term = m; b.textContent = m + ' mths';
+    b.title = (m / 12) + (m === 12 ? ' year' : ' years');
+    b.addEventListener('click', () => { state.term = m; render(); });
+    seg.appendChild(b);
+  });
+}
+
+function buildFreqs() {
+  const seg = $('freqSeg'); seg.innerHTML = '';
+  const allowed = S().freqs[state.loanType];
+  if (!allowed.includes(state.freq)) state.freq = allowed.includes('monthly') ? 'monthly' : allowed[0];
+  Object.keys(FREQ).forEach(k => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = FREQ[k].label; b.dataset.freq = k;
+    b.disabled = !allowed.includes(k);
+    b.setAttribute('aria-pressed', k === state.freq);
+    b.addEventListener('click', () => { state.freq = k; render(); });
+    seg.appendChild(b);
+  });
+  $('freqHint').textContent = allowed.length === 1 ? `${LABELS.loanType[state.loanType]} loans are repaid ${FREQ[allowed[0]].label.toLowerCase()}.` : '';
+}
+
+function termLabel(m) { return `${m} months (${m / 12} ${m === 12 ? 'year' : 'years'})`; }
+
+function render() {
+  const isCom = state.loanType === 'commercial';
+  $('consumerQs').hidden = isCom;
+  $('commercialQs').hidden = !isCom;
+
+  document.querySelectorAll('.seg[data-key]').forEach(seg =>
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', state[seg.dataset.key] === b.dataset.val)));
+  document.querySelectorAll('#termSeg button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.term === state.term));
+  buildFreqs();
+
+  // Vehicle age hint
+  const age = vehicleAge();
+  $('ageHint').textContent = age === null ? 'Vehicle age drives which lenders and rates are available.'
+    : `Vehicle is ${age} ${age === 1 ? 'year' : 'years'} old now and ${age + state.term / 12} years old at the end of the term.`;
+  $('ageHint').classList.toggle('strong', age !== null);
+
+  // Residual
+  const canResid = residualAllowed(state.term);
+  $('residField').hidden = !isCom;
+  $('resid').disabled = !canResid;
+  $('resid').max = S().residualMaxPct;
+  if (state.residualPct > S().residualMaxPct) state.residualPct = S().residualMaxPct;
+  $('resid').value = canResid ? state.residualPct : 0;
+  $('residHint').textContent = canResid
+    ? `Commercial loans only, up to ${S().residualMaxPct}% on terms up to ${S().residualMaxTermMonths} months.`
+    : `Residuals are only available on terms up to ${S().residualMaxTermMonths} months.`;
+
+  // Deposit hint
+  const minDep = S().nonAssetBackedMinDepositPct;
+  $('depHint').textContent = isCom && state.assetBacked === 'no' ? `Minimum ${minDep}% for non asset backed` : 'Optional';
+  $('assetHint').textContent = `Owns or is paying off property. Non asset backed clients need at least a ${minDep}% deposit.`;
+
+  // Consent only needed if client details entered
+  const hasClient = $('cName').value.trim() || $('cPhone').value.trim();
+  $('consentField').hidden = !hasClient;
+
+  const r = calc(state.term);
+
+  // Highlight unanswered questions only once the user has started
+  document.querySelectorAll('[data-req]').forEach(el => el.classList.toggle('need', r.status === 'incomplete' && touched && state[el.dataset.req] === ''));
+  $('fYear').classList.toggle('need', r.status === 'incomplete' && touched && state.year === '');
+
+  const ok = r.status === 'ok';
+  $('resOk').hidden = !ok;
+  $('resEyebrow').textContent = `Estimated ${FREQ[state.freq].label.toLowerCase()} repayment`;
+  $('resInfo').hidden = !(r.status === 'incomplete' || r.status === 'nomatch');
+  $('resErr').hidden = r.status !== 'error';
+  if (r.status === 'incomplete') $('resInfo').innerHTML = 'Answer these to see an estimate:<ul>' + r.missing.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>';
+  if (r.status === 'nomatch') $('resInfo').innerHTML = 'We can\'t show an indicative repayment for this scenario. Save the estimate and our team will look at the options.';
+  if (r.status === 'error') $('resErr').textContent = r.message;
+
+  if (ok) {
+    $('resAmount').textContent = money(r.amount);
+    $('resPer').textContent = r.freq.per + (r.residual > 0 ? ', plus residual' : '');
+  }
+
+  const rows = [['Loan type', LABELS.loanType[state.loanType]], ['Vehicle', state.year ? `${state.year}, ${age} ${age === 1 ? 'yr' : 'yrs'} old` : 'Not set'], ['Loan term', termLabel(state.term)]];
+  if (r.price > 0) rows.push(['Amount financed', money(r.financed, 0)]);
+  if (ok) {
+    if (r.residual > 0) rows.push(['Residual', `${money(r.residual, 0)} (${r.residualPct}%)`]);
+    rows.push(['Number of repayments', `${r.count} ${r.freq.label.toLowerCase()}`]);
+    if (S().showRate) rows.push(['Indicative rate', r.tier.rate.toFixed(2) + '% p.a.']);
+  }
+  $('resRows').innerHTML = rows.map(([k, v]) => `<div class="row"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
+
+  const savable = r.status === 'ok' || r.status === 'nomatch';
+  $('saveBtn').disabled = !savable;
+  $('printBtn').disabled = !ok;
+  const sig = signature();
+  $('savedMsg').hidden = !(lastSaved && lastSaved.sig === sig);
+  $('saveBtn').textContent = lastSaved && lastSaved.sig === sig ? 'Saved' : 'Save estimate';
+
+  // Compare
+  const bars = $('bars'); bars.innerHTML = '';
+  const all = TERMS.filter(m => m <= S().maxTermMonths).map(m => ({ m, r: calc(m) }));
+  const vals = all.filter(x => x.r.status === 'ok').map(x => x.r.amount);
+  const max = Math.max(...vals, 1);
+  $('compareSub').textContent = r.status === 'incomplete' || r.status === 'error' ? 'Complete the details above to compare terms.'
+    : `${FREQ[state.freq].label} repayments for each term. Tap one to select it.`;
+  all.forEach(({ m, r: x }) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'bar'; b.setAttribute('aria-pressed', m === state.term);
+    const has = x.status === 'ok';
+    const showNa = x.status === 'nomatch';
+    b.innerHTML = `<div class="yr">${m} mths</div>
+      <div class="amt${has ? '' : ' na'}">${has ? money(x.amount, 0) : (showNa ? 'Refer' : '&nbsp;')}</div>
+      <div class="fill"><i style="width:${has ? Math.max(8, x.amount / max * 100) : 0}%"></i></div>`;
+    b.addEventListener('click', () => { state.term = m; render(); });
+    bars.appendChild(b);
+  });
+
+  const stamp = RATES.updated ? `Rates updated ${new Date(RATES.updated).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : '';
+  $('ratesStamp').textContent = (stamp + (RATES.offline ? ' (offline copy)' : '')).trim() + (stamp ? '.' : '');
+}
+let touched = false;
+
+/* ---------- Referrer ---------- */
+const params = new URLSearchParams(location.search);
+if (params.get('ref')) store.set('af_ref_code', params.get('ref'));
+function referrer() { return store.get('af_referrer', { name: '', business: '' }); }
+function showWho() {
+  const r = referrer();
+  $('who').innerHTML = r.name ? `Estimating as <strong>${esc(r.name)}</strong>${r.business ? ', ' + esc(r.business) : ''} &middot; <button type="button" class="linkbtn" id="changeWho">Change</button>` : '';
+  const c = $('changeWho'); if (c) c.addEventListener('click', openGate);
+}
+function openGate() {
+  const r = referrer();
+  $('gName').value = r.name; $('gBiz').value = r.business; $('gAck').checked = false;
+  $('gate').hidden = false; gateCheck();
+}
+function gateCheck() { $('gGo').disabled = !($('gAck').checked && $('gName').value.trim() && $('gBiz').value.trim()); }
+['gName','gBiz','gAck'].forEach(id => $(id).addEventListener('input', gateCheck));
+$('gAck').addEventListener('change', gateCheck);
+$('gGo').addEventListener('click', () => {
+  store.set('af_referrer', { name: $('gName').value.trim(), business: $('gBiz').value.trim() });
+  try { sessionStorage.setItem('af_ack', new Date().toISOString()); } catch {}
+  $('gate').hidden = true; showWho();
+});
+
+/* ---------- Capture ---------- */
+function signature() {
+  return JSON.stringify([state, $('price').value, $('deposit').value, $('cName').value, $('cPhone').value]);
+}
+function makeRef() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `AFQ-${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}-${rand}`;
+}
+function buildPayload(ref, action) {
+  const r = calc(state.term), ref_ = referrer();
+  const isCom = state.loanType === 'commercial';
+  return {
+    key: CONFIG.captureKey,
+    quote_ref: ref, action, created: new Date().toISOString(),
+    referrer_name: ref_.name, referrer_business: ref_.business, referrer_code: store.get('af_ref_code', ''),
+    disclaimer_ack: (() => { try { return sessionStorage.getItem('af_ack') || ''; } catch { return ''; } })(),
+    client_name: $('cName').value.trim(), client_mobile: $('cPhone').value.trim(), client_consent: $('cConsent').checked ? 'Yes' : (($('cName').value.trim() || $('cPhone').value.trim()) ? 'No' : ''),
+    loan_type: LABELS.loanType[state.loanType],
+    vehicle_year: state.year, vehicle_age_years: vehicleAge(),
+    residential_status: isCom ? '' : LABELS.residential[state.residential] || '',
+    employment_status: isCom ? '' : LABELS.employment[state.employment] || '',
+    job_time: isCom ? '' : $('jobMonths').selectedOptions[0].text,
+    asset_backed: isCom ? LABELS.yesno[state.assetBacked] : '',
+    gst_registered: isCom ? LABELS.yesno[state.gst] : '',
+    comparable_credit: isCom ? LABELS.yesno[state.compCredit] : '',
+    abn_time: isCom ? $('abnMonths').selectedOptions[0].text : '',
+    vehicle_price: r.price, deposit: r.deposit, amount_financed: r.financed,
+    term_months: state.term, frequency: FREQ[state.freq].label,
+    residual_pct: r.residualPct, residual_amount: r.residual || 0,
+    result: r.status === 'ok' ? 'Estimate shown' : 'No indicative match',
+    repayment: r.status === 'ok' ? Math.round(r.amount * 100) / 100 : '',
+    indicative_rate: r.tier ? r.tier.rate : '',
+    est_fee: r.tier ? r.tier.estFee : '', monthly_fee: r.tier ? r.tier.monthlyFee : '',
+    brokerage: r.brokerage || '', naf: r.naf ? Math.round(r.naf * 100) / 100 : '',
+    matched_tier: r.tier ? r.tier.id : '', matched_lender: r.tier ? r.tier.lender : '',
+    rates_version: RATES.version, rates_updated: RATES.updated,
+    page: location.href.split('?')[0], user_agent: navigator.userAgent
+  };
+}
+async function send(payload) {
+  if (!CONFIG.apiUrl) throw new Error('not connected');
+  await fetch(CONFIG.apiUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+}
+async function flushQueue() {
+  if (!CONFIG.apiUrl) return;
+  const q = store.get('af_pending', []); if (!q.length) return;
+  const left = [];
+  for (const p of q) { try { await send(p); } catch { left.push(p); } }
+  store.set('af_pending', left);
+}
+async function capture(action) {
+  const sig = signature();
+  if (lastSaved && lastSaved.sig === sig) return lastSaved.ref;
+  const ref = makeRef();
+  const payload = buildPayload(ref, action);
+  let note;
+  try { await send(payload); note = 'Sent to Acquired Financial Services.'; }
+  catch {
+    const q = store.get('af_pending', []); q.push(payload); store.set('af_pending', q);
+    note = CONFIG.apiUrl ? 'No connection right now. It will send automatically next time this page opens.' : 'Saved on this device. Online capture is not connected yet.';
+  }
+  lastSaved = { sig, ref };
+  $('savedMsg').innerHTML = `Reference <strong>${ref}</strong>. ${esc(note)} Quote this reference when you refer the client.`;
+  render();
+  return ref;
+}
+
+/* ---------- Events ---------- */
+document.querySelectorAll('.seg[data-key] button').forEach(b => b.addEventListener('click', () => {
+  const key = b.parentElement.dataset.key;
+  state[key] = b.dataset.val; touched = true;
+  if (key === 'loanType' && b.dataset.val === 'consumer') state.residualPct = 0;
+  render();
+}));
+$('year').addEventListener('change', e => { state.year = e.target.value; touched = true; render(); });
+['jobMonths','abnMonths'].forEach(id => $(id).addEventListener('change', e => { state[id] = e.target.value; touched = true; render(); }));
+$('resid').addEventListener('input', e => { state.residualPct = +e.target.value; render(); updateResidOut(); });
+function updateResidOut() {
+  const r = calc(state.term);
+  $('residOut').textContent = r.residualPct ? `${r.residualPct}%${r.residual ? ' (' + money(r.residual, 0) + ')' : ''}` : '0%';
+}
+['price','deposit'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('input', () => { render(); updateResidOut(); });
+  el.addEventListener('blur', () => { el.value = parseMoney(el.value).toLocaleString('en-AU', { maximumFractionDigits: 2 }); render(); });
+  el.addEventListener('focus', () => el.select());
+});
+['cName','cPhone'].forEach(id => $(id).addEventListener('input', render));
+$('cConsent').addEventListener('change', render);
+
+function consentOk() {
+  const has = $('cName').value.trim() || $('cPhone').value.trim();
+  if (has && !$('cConsent').checked) { alert('Please confirm the client agrees to share their details, or clear the client name and mobile.'); return false; }
+  return true;
+}
+$('saveBtn').addEventListener('click', async () => { if (!consentOk()) return; $('saveBtn').disabled = true; await capture('save'); });
+$('printBtn').addEventListener('click', async () => {
+  if (!consentOk()) return;
+  const ref = await capture('print');
+  const r = referrer();
+  $('printMeta').textContent = `Reference ${ref}. Prepared ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}${r.name ? ' by ' + r.name + (r.business ? ', ' + r.business : '') : ''}.`;
+  window.print();
+});
+$('resetBtn').addEventListener('click', () => {
+  Object.assign(state, { loanType: 'consumer', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
+  ['year','jobMonths','abnMonths'].forEach(id => $(id).value = '');
+  $('price').value = '45,000'; $('deposit').value = '0'; $('cName').value = ''; $('cPhone').value = ''; $('cConsent').checked = false;
+  touched = false; lastSaved = null; $('savedMsg').hidden = true;
+  render(); updateResidOut();
+});
+
+/* ---------- Start ---------- */
+(async function init() {
+  buildYears();
+  try { RATES = await loadRates(); }
+  catch (e) { RATES = normaliseRates({}); }
+  $('sampleBanner').hidden = !RATES.sample;
+  buildTerms();
+  render(); updateResidOut(); showWho();
+  let acked = false; try { acked = !!sessionStorage.getItem('af_ack'); } catch {}
+  if (!acked || !referrer().name) openGate(); else $('gate').hidden = true;
+  flushQueue();
+})();
+</script>
+</body>
+</html>
