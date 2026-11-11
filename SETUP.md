@@ -53,13 +53,13 @@ they are recorded in the Quotes tab.
 
 ## Quote capture
 
-**Save estimate** and **Print** send everything the partner entered plus the result, the matched tier
+**Submit estimate** and **Print** send everything the partner entered plus the result, the matched tier
 and the rate card version to the **Quotes** tab, with a reference like `AFQ-261111-W2O2` that also
 prints on the PDF. Offline saves queue on the device and send next time the page opens.
 
 Give each partner their own link with `?ref=CODE` (e.g. `...?ref=SMITHMOTORS`) to tag their quotes.
 
-Set `notify_email` in Settings to get an email for every saved estimate.
+Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client, the referring partner and the estimate. Run `testEmail` from the editor to see a sample.
 
 ## Local preview
 

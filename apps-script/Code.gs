@@ -74,12 +74,111 @@ function doPost(e) {
 
   if (settings.notify_email) {
     try {
-      MailApp.sendEmail(settings.notify_email,
-        `New partner estimate ${data.quote_ref} from ${data.referrer_name || 'unknown'}`,
-        Object.keys(data).filter(k => k !== 'user_agent').map(k => `${k}: ${data[k]}`).join('\n'));
+      const mail = buildEmail_(data);
+      MailApp.sendEmail({
+        to: String(settings.notify_email), subject: mail.subject, body: mail.text, htmlBody: mail.html,
+        name: 'AF Partner Estimator'
+      });
     } catch (err) { console.warn(err); }
   }
   return json_({ ok: true, ref: data.quote_ref });
+}
+
+/* ---------------- Alert email to Milo ---------------- */
+
+function buildEmail_(d) {
+  const v = x => (x === undefined || x === null || x === '') ? '' : String(x);
+  const esc = s => v(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const money = n => (n === '' || n === undefined || n === null || isNaN(+n)) ? '' : '$' + (+n).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const isCom = v(d.loan_type).toLowerCase() === 'commercial';
+  const client = v(d.client_name) || 'Client name not provided';
+  const referrer = [v(d.referrer_name), v(d.referrer_business)].filter(Boolean).join(', ') || 'Unknown partner';
+  const freq = v(d.frequency).toLowerCase();
+
+  const sections = [
+    ['Referred by', [
+      ['Partner', v(d.referrer_name)],
+      ['Business', v(d.referrer_business)],
+      ['Partner code', v(d.referrer_code)]
+    ]],
+    ['Client', [
+      ['Name', v(d.client_name) || 'Not provided'],
+      ['Mobile', v(d.client_mobile) || 'Not provided', d.client_mobile ? 'tel:' + v(d.client_mobile).replace(/[^0-9+]/g, '') : ''],
+      ['Agreed to be contacted', v(d.client_consent) || 'No details given'],
+      ['Loan type', v(d.loan_type)]
+    ].concat(isCom ? [
+      ['Asset backed', v(d.asset_backed)],
+      ['GST registered', v(d.gst_registered)],
+      ['Comparable credit', v(d.comparable_credit)],
+      ['ABN running', v(d.abn_time)]
+    ] : [
+      ['Residential status', v(d.residential_status)],
+      ['Employment', v(d.employment_status)],
+      ['Time in job', v(d.job_time)]
+    ])],
+    ['Vehicle and loan', [
+      ['Vehicle', v(d.vehicle_year) ? `${d.vehicle_year} (${d.vehicle_age_years} years old)` : ''],
+      ['Vehicle price', money(d.vehicle_price)],
+      ['Deposit or trade in', money(d.deposit)],
+      ['Amount financed', money(d.amount_financed)],
+      ['Term', v(d.term_months) ? `${d.term_months} months` : ''],
+      ['Residual', +d.residual_pct ? `${money(d.residual_amount)} (${d.residual_pct}%)` : '']
+    ]],
+    ['Estimate shown to partner', [
+      ['Result', v(d.result)],
+      ['Repayment', d.repayment !== '' && d.repayment !== undefined ? `${money(d.repayment)} ${freq}` : ''],
+      ['Indicative rate', v(d.indicative_rate) ? `${d.indicative_rate}% p.a.` : ''],
+      ['Lender tier', [v(d.matched_lender), v(d.matched_tier)].filter(Boolean).join(', ')],
+      ['Fees used', [d.est_fee !== '' && d.est_fee !== undefined ? `Establishment ${money(d.est_fee)}` : '', d.monthly_fee ? `${money(d.monthly_fee)} monthly` : '', d.brokerage ? `Brokerage ${money(d.brokerage)}` : ''].filter(Boolean).join(', ')],
+      ['Total financed', money(d.naf)],
+      ['Rate card', [v(d.rates_version), v(d.rates_updated)].filter(Boolean).join(', ')]
+    ]]
+  ];
+
+  const headline = d.repayment !== '' && d.repayment !== undefined
+    ? `${money(d.repayment)} ${freq} over ${d.term_months} months`
+    : 'No indicative match, needs a manual look';
+
+  const rowsHtml = rows => rows.filter(r => r[1] !== '').map(([k, val, href]) =>
+    `<tr><td style="padding:6px 0;color:#6B7280;width:46%;vertical-align:top">${esc(k)}</td>` +
+    `<td style="padding:6px 0;color:#0F1424;font-weight:600">${href ? `<a href="${esc(href)}" style="color:#5C8A28">${esc(val)}</a>` : esc(val)}</td></tr>`).join('');
+
+  const html =
+    `<div style="background:#F7F9FB;padding:24px 12px;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;line-height:1.5">` +
+    `<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #E5E7EB;border-radius:14px;overflow:hidden">` +
+    `<div style="background:#1A2138;color:#fff;padding:22px 24px">` +
+    `<div style="color:#8DC63F;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase">New partner estimate &middot; ${esc(d.quote_ref)}</div>` +
+    `<div style="font-size:20px;font-weight:800;margin:6px 0 2px">${esc(client)}</div>` +
+    `<div style="color:#C9CEDC">From ${esc(referrer)}</div>` +
+    `<div style="margin-top:14px;font-size:18px;font-weight:700;color:#8DC63F">${esc(headline)}</div>` +
+    `</div><div style="padding:8px 24px 20px">` +
+    sections.map(([title, rows]) =>
+      `<div style="margin-top:16px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#5C8A28">${esc(title)}</div>` +
+      `<table style="width:100%;border-collapse:collapse;border-top:1px solid #E5E7EB;margin-top:6px">${rowsHtml(rows)}</table>`).join('') +
+    `<p style="margin:20px 0 0;color:#6B7280;font-size:12px">Submitted ${esc(Utilities.formatDate(d.received || new Date(), 'Australia/Sydney', 'd MMM yyyy, h:mm a'))} via the AF Partner Estimator. ` +
+    `The partner acknowledged the indicative only disclaimer. All details are as entered by the partner and are unverified.</p>` +
+    `</div></div></div>`;
+
+  const text = [`New partner estimate ${v(d.quote_ref)}`, `${client}, from ${referrer}`, headline, '']
+    .concat(sections.map(([title, rows]) => [title.toUpperCase()].concat(rows.filter(r => r[1] !== '').map(r => `${r[0]}: ${r[1]}`)).join('\n')))
+    .join('\n\n');
+
+  return { subject: `Partner referral: ${client} from ${referrer} (${v(d.quote_ref)})`, html, text };
+}
+
+/** Run from the editor to send a sample alert to the notify_email address. */
+function testEmail() {
+  const to = readSettings_().notify_email;
+  if (!to) throw new Error('Set notify_email in the Settings tab first.');
+  const mail = buildEmail_({
+    quote_ref: 'AFQ-TEST-0000', received: new Date(), referrer_name: 'Test Partner', referrer_business: 'Test Motors', referrer_code: 'TEST',
+    client_name: 'Sample Client', client_mobile: '0400 000 000', client_consent: 'Yes', loan_type: 'Consumer',
+    residential_status: 'Buying', employment_status: 'Full time', job_time: '2 years or more',
+    vehicle_year: 2024, vehicle_age_years: 2, vehicle_price: 45000, deposit: 0, amount_financed: 45000, term_months: 60,
+    frequency: 'Monthly', residual_pct: 0, result: 'Estimate shown', repayment: 951.44, indicative_rate: 8.49,
+    est_fee: 995, monthly_fee: 8, naf: 45995, matched_tier: 'C-A1', matched_lender: 'Sample Lender A', rates_version: 'TEST'
+  });
+  MailApp.sendEmail({ to: String(to), subject: '[TEST] ' + mail.subject, body: mail.text, htmlBody: mail.html, name: 'AF Partner Estimator' });
 }
 
 /* ---------------- Rate card ---------------- */
@@ -148,7 +247,7 @@ function setup() {
       ['consumerFreqs', 'weekly,fortnightly,monthly', 'Frequencies offered to consumer clients'],
       ['commercialFreqs', 'monthly', 'Frequencies offered to commercial clients'],
       ['commercialInAdvance', 'N', 'Y = commercial repayments calculated in advance'],
-      ['notify_email', '', 'Email address to notify on each saved estimate (optional)'],
+      ['notify_email', 'milo@acquiredfinance.com', 'Who gets an email for each submitted estimate. Separate several addresses with commas.'],
       ['capture_key', '', 'Optional shared key. Must match captureKey in index.html']
     ]);
     settings.getRange('B2').setNumberFormat('@');

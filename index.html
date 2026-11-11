@@ -367,7 +367,7 @@
         <div class="msg err" id="resErr" hidden></div>
         <dl class="rows" id="resRows"></dl>
         <div class="actions">
-          <button type="button" class="btn" id="saveBtn">Save estimate</button>
+          <button type="button" class="btn" id="saveBtn">Submit estimate</button>
           <button type="button" class="btn ghost" id="printBtn">Print</button>
           <button type="button" class="btn ghost" id="resetBtn">Reset</button>
         </div>
@@ -649,7 +649,7 @@ function render() {
   $('resInfo').hidden = !(r.status === 'incomplete' || r.status === 'nomatch');
   $('resErr').hidden = r.status !== 'error';
   if (r.status === 'incomplete') $('resInfo').innerHTML = 'Answer these to see an estimate:<ul>' + r.missing.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>';
-  if (r.status === 'nomatch') $('resInfo').innerHTML = 'We can\'t show an indicative repayment for this scenario. Save the estimate and our team will look at the options.';
+  if (r.status === 'nomatch') $('resInfo').innerHTML = 'We can\'t show an indicative repayment for this scenario. Submit the estimate and our team will look at the options.';
   if (r.status === 'error') $('resErr').textContent = r.message;
 
   if (ok) {
@@ -671,7 +671,7 @@ function render() {
   $('printBtn').disabled = !ok;
   const sig = signature();
   $('savedMsg').hidden = !(lastSaved && lastSaved.sig === sig);
-  $('saveBtn').textContent = lastSaved && lastSaved.sig === sig ? 'Saved' : 'Save estimate';
+  $('saveBtn').textContent = lastSaved && lastSaved.sig === sig ? 'Submitted' : 'Submit estimate';
 
   // Compare
   const bars = $('bars'); bars.innerHTML = '';
