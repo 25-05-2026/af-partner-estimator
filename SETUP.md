@@ -59,7 +59,7 @@ prints on the PDF. Offline saves queue on the device and send next time the page
 
 Give each partner their own link with `?ref=CODE` (e.g. `...?ref=SMITHMOTORS`) to tag their quotes.
 
-Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client, the referring partner and the estimate. Run `testEmail` from the editor to see a sample.
+Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client (name, mobile, email), the referring partner and the estimate. Client first name, last name, mobile and consent are required to submit or print, so each estimate can be matched to the lead when it comes in. Run `testEmail` from the editor to see a sample.
 
 ## Local preview
 

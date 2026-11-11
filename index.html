@@ -308,16 +308,25 @@
             </div>
           </div>
 
-          <div class="opt-box">
+          <div class="opt-box" id="clientBox">
+            <span class="label" style="margin-bottom:4px">Client details</span>
+            <div class="hint" style="margin:0 0 14px">Needed to submit, so we can match this estimate to the client when they apply.</div>
             <div class="field">
               <div class="two">
-                <div><label class="label" for="cName">Client name <span class="opt">(optional)</span></label><input class="txt" id="cName" autocomplete="off"></div>
-                <div><label class="label" for="cPhone">Client mobile <span class="opt">(optional)</span></label><input class="txt" id="cPhone" inputmode="tel" autocomplete="off"></div>
+                <div><label class="label" for="cFirst">First name</label><input class="txt" id="cFirst" autocomplete="off"></div>
+                <div><label class="label" for="cLast">Last name</label><input class="txt" id="cLast" autocomplete="off"></div>
               </div>
             </div>
-            <div class="field" id="consentField" hidden>
+            <div class="field">
+              <div class="two">
+                <div><label class="label" for="cPhone">Mobile</label><input class="txt" id="cPhone" inputmode="tel" autocomplete="off" placeholder="04xx xxx xxx"></div>
+                <div><label class="label" for="cEmail">Email <span class="opt">(optional)</span></label><input class="txt" id="cEmail" type="email" inputmode="email" autocomplete="off"></div>
+              </div>
+            </div>
+            <div class="field">
               <label class="check"><input type="checkbox" id="cConsent"> <span>The client agrees to share these details with Acquired Financial Services so we can contact them about this estimate.</span></label>
             </div>
+            <div class="msg err" id="clientErr" hidden style="margin-top:0"></div>
           </div>
         </section>
 
@@ -633,9 +642,8 @@ function render() {
   $('depHint').textContent = isCom && state.assetBacked === 'no' ? `Minimum ${minDep}% for non asset backed` : 'Optional';
   $('assetHint').textContent = `Owns or is paying off property. Non asset backed clients need at least a ${minDep}% deposit.`;
 
-  // Consent only needed if client details entered
-  const hasClient = $('cName').value.trim() || $('cPhone').value.trim();
-  $('consentField').hidden = !hasClient;
+  // Once a submit was attempted, keep the client details check live
+  if (clientChecked) showClientErrors();
 
   const r = calc(state.term);
 
@@ -722,7 +730,44 @@ $('gGo').addEventListener('click', () => {
 
 /* ---------- Capture ---------- */
 function signature() {
-  return JSON.stringify([state, $('price').value, $('deposit').value, $('cName').value, $('cPhone').value]);
+  return JSON.stringify([state, $('price').value, $('deposit').value, $('cFirst').value, $('cLast').value, $('cPhone').value, $('cEmail').value]);
+}
+
+/* ---------- Client details (required to submit or print) ---------- */
+let clientChecked = false;
+// Australian mobile: 04xxxxxxxx or +614xxxxxxxx. Returned as 0412 345 678.
+function cleanMobile(s) {
+  let d = String(s).replace(/[^0-9+]/g, '');
+  if (d.startsWith('+61')) d = '0' + d.slice(3); else if (d.startsWith('61') && d.length === 11) d = '0' + d.slice(2);
+  return /^04\d{8}$/.test(d) ? `${d.slice(0, 4)} ${d.slice(4, 7)} ${d.slice(7)}` : '';
+}
+function client() {
+  return {
+    first: $('cFirst').value.trim(), last: $('cLast').value.trim(),
+    mobile: cleanMobile($('cPhone').value), email: $('cEmail').value.trim(), consent: $('cConsent').checked
+  };
+}
+function clientProblems() {
+  const c = client(), p = [];
+  if (!c.first) p.push(['cFirst', 'Client first name']);
+  if (!c.last) p.push(['cLast', 'Client last name']);
+  if (!c.mobile) p.push(['cPhone', $('cPhone').value.trim() ? 'A valid Australian mobile (04xx xxx xxx)' : 'Client mobile']);
+  if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) p.push(['cEmail', 'A valid email, or leave it blank']);
+  if (!c.consent) p.push(['cConsent', 'The client\'s agreement to share their details']);
+  return p;
+}
+function showClientErrors() {
+  const p = clientProblems();
+  ['cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).style.borderColor = p.some(x => x[0] === id) ? '#F1C9C4' : '');
+  $('clientErr').hidden = !p.length;
+  $('clientErr').innerHTML = 'To submit, please add:<ul>' + p.map(x => `<li>${esc(x[1])}</li>`).join('') + '</ul>';
+  return p;
+}
+function clientOk() {
+  clientChecked = true;
+  const p = showClientErrors();
+  if (p.length) { $('clientBox').scrollIntoView({ behavior: 'smooth', block: 'center' }); $(p[0][0]).focus({ preventScroll: true }); return false; }
+  return true;
 }
 function makeRef() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
@@ -737,7 +782,8 @@ function buildPayload(ref, action) {
     quote_ref: ref, action, created: new Date().toISOString(),
     referrer_name: ref_.name, referrer_business: ref_.business, referrer_code: store.get('af_ref_code', ''),
     disclaimer_ack: (() => { try { return sessionStorage.getItem('af_ack') || ''; } catch { return ''; } })(),
-    client_name: $('cName').value.trim(), client_mobile: $('cPhone').value.trim(), client_consent: $('cConsent').checked ? 'Yes' : (($('cName').value.trim() || $('cPhone').value.trim()) ? 'No' : ''),
+    client_name: `${client().first} ${client().last}`.trim(), client_first_name: client().first, client_last_name: client().last,
+    client_mobile: client().mobile, client_email: client().email, client_consent: client().consent ? 'Yes' : 'No',
     loan_type: LABELS.loanType[state.loanType],
     vehicle_year: state.year, vehicle_age_years: vehicleAge(),
     residential_status: isCom ? '' : LABELS.residential[state.residential] || '',
@@ -808,26 +854,23 @@ function updateResidOut() {
   el.addEventListener('blur', () => { el.value = parseMoney(el.value).toLocaleString('en-AU', { maximumFractionDigits: 2 }); render(); });
   el.addEventListener('focus', () => el.select());
 });
-['cName','cPhone'].forEach(id => $(id).addEventListener('input', render));
+['cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).addEventListener('input', render));
+$('cPhone').addEventListener('blur', () => { const m = cleanMobile($('cPhone').value); if (m) $('cPhone').value = m; });
 $('cConsent').addEventListener('change', render);
 
-function consentOk() {
-  const has = $('cName').value.trim() || $('cPhone').value.trim();
-  if (has && !$('cConsent').checked) { alert('Please confirm the client agrees to share their details, or clear the client name and mobile.'); return false; }
-  return true;
-}
-$('saveBtn').addEventListener('click', async () => { if (!consentOk()) return; $('saveBtn').disabled = true; await capture('save'); });
+$('saveBtn').addEventListener('click', async () => { if (!clientOk()) return; $('saveBtn').disabled = true; await capture('save'); });
 $('printBtn').addEventListener('click', async () => {
-  if (!consentOk()) return;
+  if (!clientOk()) return;
   const ref = await capture('print');
-  const r = referrer();
-  $('printMeta').textContent = `Reference ${ref}. Prepared ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}${r.name ? ' by ' + r.name + (r.business ? ', ' + r.business : '') : ''}.`;
+  const r = referrer(), c = client();
+  $('printMeta').textContent = `Reference ${ref}. Prepared for ${c.first} ${c.last} on ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}${r.name ? ' by ' + r.name + (r.business ? ', ' + r.business : '') : ''}.`;
   window.print();
 });
 $('resetBtn').addEventListener('click', () => {
   Object.assign(state, { loanType: 'consumer', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths'].forEach(id => $(id).value = '');
-  $('price').value = '45,000'; $('deposit').value = '0'; $('cName').value = ''; $('cPhone').value = ''; $('cConsent').checked = false;
+  $('price').value = '45,000'; $('deposit').value = '0'; ['cFirst','cLast','cPhone','cEmail'].forEach(id => { $(id).value = ''; $(id).style.borderColor = ''; });
+  $('cConsent').checked = false; $('clientErr').hidden = true; clientChecked = false;
   touched = false; lastSaved = null; $('savedMsg').hidden = true;
   render(); updateResidOut();
 });

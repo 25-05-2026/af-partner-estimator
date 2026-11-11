@@ -27,7 +27,7 @@ const RATE_HEADERS = [
 
 const QUOTE_HEADERS = [
   'received', 'quote_ref', 'action', 'created', 'referrer_name', 'referrer_business', 'referrer_code',
-  'client_name', 'client_mobile', 'client_consent', 'loan_type', 'vehicle_year', 'vehicle_age_years',
+  'client_name', 'client_first_name', 'client_last_name', 'client_mobile', 'client_email', 'client_consent', 'loan_type', 'vehicle_year', 'vehicle_age_years',
   'residential_status', 'employment_status', 'job_time',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
@@ -104,6 +104,7 @@ function buildEmail_(d) {
     ['Client', [
       ['Name', v(d.client_name) || 'Not provided'],
       ['Mobile', v(d.client_mobile) || 'Not provided', d.client_mobile ? 'tel:' + v(d.client_mobile).replace(/[^0-9+]/g, '') : ''],
+      ['Email', v(d.client_email) || 'Not provided', d.client_email ? 'mailto:' + v(d.client_email) : ''],
       ['Agreed to be contacted', v(d.client_consent) || 'No details given'],
       ['Loan type', v(d.loan_type)]
     ].concat(isCom ? [
@@ -163,7 +164,9 @@ function buildEmail_(d) {
     .concat(sections.map(([title, rows]) => [title.toUpperCase()].concat(rows.filter(r => r[1] !== '').map(r => `${r[0]}: ${r[1]}`)).join('\n')))
     .join('\n\n');
 
-  return { subject: `Partner referral: ${client} from ${referrer} (${v(d.quote_ref)})`, html, text };
+  // Mobile in the subject so the alert is easy to find when the client's lead comes in.
+  const mob = v(d.client_mobile) ? `, ${v(d.client_mobile)}` : '';
+  return { subject: `Partner referral: ${client}${mob} from ${referrer} (${v(d.quote_ref)})`, html, text };
 }
 
 /** Run from the editor to send a sample alert to the notify_email address. */
@@ -172,7 +175,7 @@ function testEmail() {
   if (!to) throw new Error('Set notify_email in the Settings tab first.');
   const mail = buildEmail_({
     quote_ref: 'AFQ-TEST-0000', received: new Date(), referrer_name: 'Test Partner', referrer_business: 'Test Motors', referrer_code: 'TEST',
-    client_name: 'Sample Client', client_mobile: '0400 000 000', client_consent: 'Yes', loan_type: 'Consumer',
+    client_name: 'Sample Client', client_mobile: '0400 000 000', client_email: 'sample@example.com', client_consent: 'Yes', loan_type: 'Consumer',
     residential_status: 'Buying', employment_status: 'Full time', job_time: '2 years or more',
     vehicle_year: 2024, vehicle_age_years: 2, vehicle_price: 45000, deposit: 0, amount_financed: 45000, term_months: 60,
     frequency: 'Monthly', residual_pct: 0, result: 'Estimate shown', repayment: 951.44, indicative_rate: 8.49,
