@@ -24,6 +24,21 @@ commercial only balloons limited by the Balloons table (vehicle new or used, age
 After that, editing the **Rates** tab updates every partner's calculator on their next page load.
 The `updated` date in Settings stamps itself when Rates is edited.
 
+## Lender rate cards
+
+Rates come from the lenders' broker rate cards, extracted into rows (one row per rate cell) and built with
+`python -I tools/build_rates.py <folder of group_*.json>`. That writes:
+
+- `private/rates-master.csv`: every row with lender, product, source page, notes and an `active` flag with
+  the reason when a row is switched off. **Not published** (gitignored). Import it into the Rates tab of the
+  Sheet (File > Import > Replace current sheet) when you connect the Sheet.
+- `rates.json`: the public feed. Active rows only, criteria and rate, no lender names.
+
+Every loan adds a $550 establishment fee and a $1,250 origination fee. Commercial loans also add 4%
+brokerage on the amount financed (e.g. $40,000 becomes $41,600, then $43,400 with fees). The page notes
+that a monthly admin fee of up to $12.50 may apply; it is not added to the repayment. All of these are in
+Settings. Commercial rates for `full_doc` rows are only used if `docTypes` in Settings includes `full_doc`.
+
 ## How rates are matched
 
 Each row in **Rates** is one lender tier. A blank cell means "any". The calculator finds every tier the

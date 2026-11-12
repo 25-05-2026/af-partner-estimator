@@ -19,12 +19,18 @@ const TAB_QUOTES = 'Quotes';
 const TAB_BALLOONS = 'Balloons';
 
 const RATE_HEADERS = [
-  'id', 'active', 'lender', 'loan_type', 'tier', 'condition',
-  'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
-  'residential', 'employment', 'job_months_min',
-  'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min',
-  'min_deposit_pct', 'rate', 'est_fee', 'monthly_fee', 'brokerage_pct',
-  'min_loan', 'max_loan', 'max_term_months', 'max_residual_pct', 'notes'
+  'id', 'active', 'status_note', 'lender', 'product', 'loan_type', 'condition',
+  'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max', 'credit_score_min', 'credit_score_max',
+  'residential', 'employment', 'job_months_min', 'asset_backed', 'gst_registered', 'comparable_credit',
+  'abn_months_min', 'min_deposit_pct', 'min_loan', 'max_loan', 'min_term_months', 'max_term_months',
+  'max_residual_pct', 'doc_type', 'rate', 'rate_basis', 'source', 'notes'
+];
+// Only these columns ever leave the Sheet. Lender, product, source and notes stay private.
+const PUBLIC_RATE_FIELDS = [
+  'id', 'loan_type', 'condition', 'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
+  'credit_score_min', 'credit_score_max', 'residential', 'employment', 'job_months_min',
+  'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min', 'min_deposit_pct',
+  'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'rate'
 ];
 
 const QUOTE_HEADERS = [
@@ -33,7 +39,7 @@ const QUOTE_HEADERS = [
   'residential_status', 'employment_status', 'job_time',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
-  'result', 'repayment', 'indicative_rate', 'est_fee', 'monthly_fee', 'brokerage', 'naf',
+  'credit_score', 'credit_score_used', 'result', 'repayment', 'indicative_rate', 'est_fee', 'origination_fee', 'brokerage_pct', 'brokerage', 'naf',
   'matched_tier', 'matched_lender', 'rates_version', 'rates_updated', 'disclaimer_ack', 'page', 'user_agent'
 ];
 
@@ -108,7 +114,8 @@ function buildEmail_(d) {
       ['Mobile', v(d.client_mobile) || 'Not provided', d.client_mobile ? 'tel:' + v(d.client_mobile).replace(/[^0-9+]/g, '') : ''],
       ['Email', v(d.client_email) || 'Not provided', d.client_email ? 'mailto:' + v(d.client_email) : ''],
       ['Agreed to be contacted', v(d.client_consent) || 'No details given'],
-      ['Loan type', v(d.loan_type)]
+      ['Loan type', v(d.loan_type)],
+      ['Credit score', v(d.credit_score) + (v(d.credit_score) === "I don't know" ? ` (assumed ${v(d.credit_score_used)})` : '')]
     ].concat(isCom ? [
       ['Asset backed', v(d.asset_backed)],
       ['GST registered', v(d.gst_registered)],
@@ -132,7 +139,7 @@ function buildEmail_(d) {
       ['Repayment', d.repayment !== '' && d.repayment !== undefined ? `${money(d.repayment)} ${freq}` : ''],
       ['Indicative rate', v(d.indicative_rate) ? `${d.indicative_rate}% p.a.` : ''],
       ['Lender tier', [v(d.matched_lender), v(d.matched_tier)].filter(Boolean).join(', ')],
-      ['Fees used', [d.est_fee !== '' && d.est_fee !== undefined ? `Establishment ${money(d.est_fee)}` : '', d.monthly_fee ? `${money(d.monthly_fee)} monthly` : '', d.brokerage ? `Brokerage ${money(d.brokerage)}` : ''].filter(Boolean).join(', ')],
+      ['Fees financed', [d.est_fee !== '' && d.est_fee !== undefined ? `Establishment ${money(d.est_fee)}` : '', d.origination_fee ? `Origination ${money(d.origination_fee)}` : '', d.brokerage ? `Brokerage ${money(d.brokerage)} (${d.brokerage_pct}%)` : ''].filter(Boolean).join(', ')],
       ['Total financed', money(d.naf)],
       ['Rate card', [v(d.rates_version), v(d.rates_updated)].filter(Boolean).join(', ')]
     ]]
@@ -181,7 +188,7 @@ function testEmail() {
     residential_status: 'Buying', employment_status: 'Full time', job_time: '2 years or more',
     vehicle_year: 2024, vehicle_age_years: 2, vehicle_price: 45000, deposit: 0, amount_financed: 45000, term_months: 60,
     frequency: 'Monthly', residual_pct: 0, result: 'Estimate shown', repayment: 951.44, indicative_rate: 8.49,
-    est_fee: 995, monthly_fee: 8, naf: 45995, matched_tier: 'C-A1', matched_lender: 'Sample Lender A', rates_version: 'TEST'
+    credit_score: '750 to 799', credit_score_used: 750, est_fee: 550, origination_fee: 1250, naf: 46800, matched_tier: 'C-A1', matched_lender: 'Sample Lender A', rates_version: 'TEST'
   });
   MailApp.sendEmail({ to: String(to), subject: '[TEST] ' + mail.subject, body: mail.text, htmlBody: mail.html, name: 'AF Partner Estimator' });
 }
@@ -195,10 +202,11 @@ function getRateCard_() {
   const headers = values.shift().map(h => String(h).trim());
   const tiers = values
     .filter(r => r.some(c => c !== ''))
+    .filter(r => String(r[headers.indexOf('active')]).trim().toUpperCase() !== 'N')
     .map(r => {
       const o = {};
-      // Lender names and notes stay private: partners only ever receive the tier id.
-      headers.forEach((h, i) => { if (h && h !== 'lender' && h !== 'notes') o[h] = r[i] instanceof Date ? r[i].toISOString() : r[i]; });
+      // Lender names, products and notes stay private: partners only ever receive the tier id.
+      PUBLIC_RATE_FIELDS.forEach(h => { const i = headers.indexOf(h); if (i > -1) o[h] = r[i]; });
       return o;
     });
 
@@ -249,7 +257,7 @@ function setup() {
 
   const settings = sheet_(TAB_SETTINGS);
   if (settings.getLastRow() === 0) {
-    settings.getRange(1, 1, 13, 3).setValues([
+    const rowsS = [
       ['key', 'value', 'what it does'],
       ['updated', Utilities.formatDate(new Date(), 'Australia/Sydney', 'yyyy-MM-dd'), 'Set automatically when the Rates tab is edited'],
       ['version', '', 'Optional label, e.g. Nov 2026 rate card'],
@@ -262,8 +270,16 @@ function setup() {
       ['commercialFreqs', 'monthly', 'Frequencies offered to commercial clients'],
       ['commercialInAdvance', 'N', 'Y = commercial repayments calculated in advance'],
       ['notify_email', 'milo@acquiredfinance.com', 'Who gets an email for each submitted estimate. Separate several addresses with commas.'],
-      ['capture_key', '', 'Optional shared key. Must match captureKey in index.html']
-    ]);
+      ['capture_key', '', 'Optional shared key. Must match captureKey in index.html'],
+      ['establishmentFee', 550, 'Added to every loan'],
+      ['originationFee', 1250, 'Added to every loan'],
+      ['commercialBrokeragePct', 4, 'Brokerage % of amount financed, added to commercial loans'],
+      ['consumerBrokeragePct', 0, 'Brokerage % of amount financed, added to consumer loans'],
+      ['monthlyAdminFeeMax', 12.5, 'Shown as a note under the repayment, not added to it'],
+      ['unknownCreditScore', 500, 'Score assumed when the partner answers I don\'t know'],
+      ['docTypes', 'low_doc,no_financials', 'Commercial doc types to quote on. Add full_doc to include full financials rates.']
+    ];
+    settings.getRange(1, 1, rowsS.length, 3).setValues(rowsS);
     settings.getRange('B2').setNumberFormat('@');
     settings.setFrozenRows(1);
     settings.getRange('A1:C1').setFontWeight('bold');
@@ -271,14 +287,8 @@ function setup() {
 
   const rates = sheet_(TAB_RATES);
   if (rates.getLastRow() === 0) {
-    const sample = [
-      ['C-A1','Y','Sample Lender A','consumer','Prime, newer vehicle','',0,3,15,'buying,owning,renting','full_time,part_time',6,'','','','','',8.49,995,8,0,5000,150000,84,'','Sample only'],
-      ['C-B1','Y','Sample Lender B','consumer','Older vehicle','',8,15,20,'buying,owning,renting','full_time,part_time',6,'','','','','',11.49,1195,10,0,5000,80000,72,'','Sample only'],
-      ['B-A1','Y','Sample Lender D','commercial','Asset backed, newer vehicle','',0,5,15,'','','','Y','','',24,'',7.49,495,4.95,3,10000,250000,84,40,'Sample only'],
-      ['B-B1','Y','Sample Lender E','commercial','Non asset backed','',0,10,15,'','','','','Y','Y',24,'',9.49,595,4.95,3,10000,150000,60,30,'Sample only']
-    ];
+    // Import private/rates-master.csv into this tab (File > Import > Replace current sheet).
     rates.getRange(1, 1, 1, RATE_HEADERS.length).setValues([RATE_HEADERS]).setFontWeight('bold');
-    rates.getRange(2, 1, sample.length, RATE_HEADERS.length).setValues(sample);
     rates.setFrozenRows(1);
   }
 

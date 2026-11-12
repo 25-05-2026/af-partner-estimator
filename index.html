@@ -179,7 +179,8 @@
     <div class="eyebrow">Before you start</div>
     <h2 id="gateTitle">For indicative purposes only</h2>
     <div class="terms-box">
-      <p><strong>This calculator provides indicative repayment estimates only.</strong> It is not a quote, an offer, a pre-approval or an approval of credit, and no rate or repayment is guaranteed.</p>
+      <p><strong>This calculator is a guide only and provides indicative repayment estimates.</strong> Once we complete an application with the client, what can be achieved may vary based on their credit score, the lender's assessment and other factors.</p>
+      <p>It is not a quote, an offer, a pre-approval or an approval of credit, and no rate or repayment is guaranteed.</p>
       <p>Actual rates, fees and repayments depend on a full credit assessment of the applicant, verification of the information provided, the vehicle being financed and each lender's criteria at the time of application. Lender rates and policies change regularly and without notice.</p>
       <p>Please do not tell a client they are approved, qualify for a particular rate or will receive a particular repayment. Refer all clients to Acquired Financial Services for a formal assessment and quote.</p>
       <p>Details you submit in this tool are sent to Acquired Financial Services so we know how each estimate was worked out. Only enter client details with the client's permission.</p>
@@ -230,7 +231,7 @@
   <div class="wrap">
     <div class="eyebrow">Indicative purposes only</div>
     <h1>Vehicle finance repayment estimator</h1>
-    <p>Indicative repayments for consumer and commercial vehicle loans. Not a quote, offer or approval of credit.</p>
+    <p>Use this as a guide only. Once we complete an application with the client, what can be achieved may vary based on their credit score, lender assessment and other factors.</p>
     <p class="print-only" id="printMeta"></p>
   </div>
 </header>
@@ -267,6 +268,28 @@
         <!-- 2. Client -->
         <section class="card" aria-labelledby="h2c">
           <div class="sec-h"><span class="n">2</span><h2 id="h2c">The client</h2></div>
+
+          <div class="field" data-req="creditScore">
+            <label class="label" for="creditScore">Comprehensive credit score</label>
+            <select id="creditScore" data-key="creditScore">
+              <option value="">Select</option>
+              <option value="unknown">I don't know</option>
+              <option value="0">Below 400</option>
+              <option value="400">400 to 459</option>
+              <option value="460">460 to 524</option>
+              <option value="525">525 to 549</option>
+              <option value="550">550 to 599</option>
+              <option value="600">600 to 649</option>
+              <option value="650">650 to 660</option>
+              <option value="661">661 to 734</option>
+              <option value="735">735 to 749</option>
+              <option value="750">750 to 799</option>
+              <option value="800">800 to 852</option>
+              <option value="853">853 to 959</option>
+              <option value="960">960 or above</option>
+            </select>
+            <div class="hint" id="scoreHint">Equifax comprehensive score out of 1200. Some lender rates depend on it.</div>
+          </div>
 
           <div id="consumerQs">
             <div class="field" data-req="residential">
@@ -331,7 +354,8 @@
                 <option value="6">6 to 12 months</option>
                 <option value="12">1 to 2 years</option>
                 <option value="24">2 to 4 years</option>
-                <option value="48">4 years or more</option>
+                <option value="48">4 to 6 years</option>
+                <option value="72">6 years or more</option>
               </select>
             </div>
           </div>
@@ -380,7 +404,9 @@
           <div class="big" id="resAmount">$0.00</div>
           <div class="per" id="resPer">per month</div>
         </div>
+        <div class="per" id="resFee" style="font-size:.85rem; margin-top:8px"></div>
         <div class="msg info" id="resInfo" hidden></div>
+        <div class="msg info" id="resScore" hidden></div>
         <div class="msg err" id="resErr" hidden></div>
         <dl class="rows" id="resRows"></dl>
         <div class="actions">
@@ -433,8 +459,8 @@ const LABELS = {
   yesno: { yes: 'Yes', no: 'No' }
 };
 const REQUIRED = {
-  consumer:   [['residential','Residential status'], ['employment','Employment status'], ['jobMonths','Time in current job']],
-  commercial: [['assetBacked','Asset backed'], ['gst','GST registered'], ['compCredit','Comparable credit'], ['abnMonths','ABN time running']]
+  consumer:   [['creditScore','Credit score'], ['residential','Residential status'], ['employment','Employment status'], ['jobMonths','Time in current job']],
+  commercial: [['creditScore','Credit score'], ['assetBacked','Asset backed'], ['gst','GST registered'], ['compCredit','Comparable credit'], ['abnMonths','ABN time running']]
 };
 const THIS_YEAR = new Date().getFullYear();
 
@@ -464,7 +490,7 @@ let RATES = { settings: {}, tiers: [] };
 const S = () => RATES.settings;
 const state = {
   loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0,
-  residential: '', employment: '', jobMonths: '',
+  residential: '', employment: '', jobMonths: '', creditScore: '',
   assetBacked: '', gst: '', compCredit: '', abnMonths: ''
 };
 let lastSaved = null;   // { sig, ref }
@@ -483,6 +509,12 @@ function normaliseRates(raw) {
     residualMaxPct: num(st.residualMaxPct) ?? 40,   // hard cap on top of the balloons table
     residualBase: norm(st.residualBase) === 'naf' ? 'naf' : 'price',
     nonAssetBackedMinDepositPct: num(st.nonAssetBackedMinDepositPct) ?? 20,
+    establishmentFee: num(st.establishmentFee) ?? 550,     // added to every loan
+    originationFee: num(st.originationFee) ?? 1250,        // added to every loan
+    brokeragePct: { consumer: num(st.consumerBrokeragePct) ?? 0, commercial: num(st.commercialBrokeragePct) ?? 4 },
+    monthlyAdminFeeMax: num(st.monthlyAdminFeeMax) ?? 12.5, // shown as a note, not added to the repayment
+    unknownCreditScore: num(st.unknownCreditScore) ?? 500,
+    docTypes: list(st.docTypes || 'low_doc,no_financials'), // commercial doc types partners can be quoted on
     freqs: {
       consumer: list(st.consumerFreqs || 'weekly,fortnightly,monthly').filter(f => FREQ[f]),
       commercial: list(st.commercialFreqs || 'monthly').filter(f => FREQ[f])
@@ -496,7 +528,8 @@ function normaliseRates(raw) {
     residential: list(t.residential), employment: list(t.employment), jobMonthsMin: num(t.job_months_min),
     assetBacked: yn(t.asset_backed), gst: yn(t.gst_registered), compCredit: yn(t.comparable_credit), abnMonthsMin: num(t.abn_months_min),
     minDepositPct: num(t.min_deposit_pct),
-    rate: num(t.rate), estFee: num(t.est_fee) ?? 0, monthlyFee: num(t.monthly_fee) ?? 0, brokeragePct: num(t.brokerage_pct) ?? 0,
+    rate: num(t.rate), scoreMin: num(t.credit_score_min), scoreMax: num(t.credit_score_max),
+    minTerm: num(t.min_term_months), docTypes: list(t.doc_type),
     minLoan: num(t.min_loan), maxLoan: num(t.max_loan), maxTerm: num(t.max_term_months), maxResidualPct: num(t.max_residual_pct)
   }));
   const src = Array.isArray(raw.balloons) && raw.balloons.length ? raw.balloons : DEFAULT_BALLOONS;
@@ -534,6 +567,7 @@ function repayment(P, ratePct, months, perYear, residual, inAdvance) {
   return pmt;
 }
 
+function scoreValue() { return state.creditScore === 'unknown' ? S().unknownCreditScore : +state.creditScore; }
 function vehicleAge() { return state.year === '' ? null : Math.max(0, THIS_YEAR - +state.year); }
 // Largest balloon % allowed for this term. Commercial only; consumer is always 0.
 function balloonLimit(term) {
@@ -549,6 +583,10 @@ function residualFor(term) { return Math.min(state.residualPct, balloonLimit(ter
 function tierMatches(t, c) {
   if (t.loanType !== c.loanType) return false;
   if (t.condition.length && !t.condition.includes(c.condition)) return false;
+  if (t.scoreMin !== null && c.score < t.scoreMin) return false;
+  if (t.scoreMax !== null && c.score > t.scoreMax) return false;
+  if (t.minTerm !== null && c.term < t.minTerm) return false;
+  if (t.docTypes.length && !t.docTypes.some(d => S().docTypes.includes(d))) return false;
   if (t.ageMin !== null && c.age < t.ageMin) return false;
   if (t.ageMax !== null && c.age > t.ageMax) return false;
   if (t.ageEndMax !== null && c.age + c.term / 12 > t.ageEndMax) return false;
@@ -593,17 +631,18 @@ function calc(term) {
 
   const ctx = {
     loanType: state.loanType, condition: state.condition, age: vehicleAge(), term, financed, depositPct, residualPct,
-    residential: state.residential, employment: state.employment, jobMonths: +state.jobMonths,
+    residential: state.residential, employment: state.employment, jobMonths: +state.jobMonths, score: scoreValue(),
     assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths
   };
   const f = FREQ[state.freq];
   const inAdv = S().inAdvance[state.loanType];
   let best = null;
+  const c0 = ctx;
   RATES.tiers.filter(t => tierMatches(t, ctx)).forEach(t => {
-    const brokerage = Math.round(financed * t.brokeragePct) / 100;
-    const naf = financed + t.estFee + brokerage;
+    const brokerage = Math.round(financed * S().brokeragePct[c0.loanType]) / 100;
+    const naf = financed + brokerage + S().establishmentFee + S().originationFee;
     const residual = Math.round((S().residualBase === 'naf' ? naf : price) * residualPct) / 100;
-    const amount = repayment(naf, t.rate, term, f.perYear, residual, inAdv) + t.monthlyFee * 12 / f.perYear;
+    const amount = repayment(naf, t.rate, term, f.perYear, residual, inAdv);
     if (!best || amount < best.amount) best = { tier: t, brokerage, naf, residual, amount };
   });
   if (!best) return Object.assign(out, { status: 'nomatch' });
@@ -687,6 +726,8 @@ function render() {
   $('fYear').classList.toggle('need', r.status === 'incomplete' && touched && state.year === '');
 
   const ok = r.status === 'ok';
+  $('resScore').hidden = !(ok && state.creditScore === 'unknown');
+  $('resScore').textContent = `Credit score unknown: this estimate assumes the client's comprehensive credit score is above ${S().unknownCreditScore} when the application is submitted to the lender.`;
   $('resOk').hidden = !ok;
   $('resEyebrow').textContent = `Estimated ${FREQ[state.freq].label.toLowerCase()} repayment`;
   $('resInfo').hidden = !(r.status === 'incomplete' || r.status === 'nomatch');
@@ -698,12 +739,14 @@ function render() {
   if (ok) {
     $('resAmount').textContent = money(r.amount);
     $('resPer').textContent = r.freq.per + (r.residual > 0 ? ', plus residual' : '');
+    $('resFee').textContent = `Depending on the lender, this repayment may also incur a monthly admin fee of up to ${money(S().monthlyAdminFeeMax)}.`;
   }
 
   const rows = [['Loan type', LABELS.loanType[state.loanType]], ['Vehicle', state.year ? `${state.year}, ${age} ${age === 1 ? 'yr' : 'yrs'} old` : 'Not set'], ['Loan term', termLabel(state.term)]];
   if (r.price > 0) rows.push(['Amount financed', money(r.financed, 0)]);
   if (ok) {
     if (r.residual > 0) rows.push(['Residual', `${money(r.residual, 0)} (${r.residualPct}%)`]);
+    rows.push(['Fees and charges financed', money(r.naf - r.financed, 0)]);
     rows.push(['Number of repayments', `${r.count} ${r.freq.label.toLowerCase()}`]);
     if (S().showRate) rows.push(['Indicative rate', r.tier.rate.toFixed(2) + '% p.a.']);
   }
@@ -851,7 +894,8 @@ function buildPayload(ref, action) {
     result: r.status === 'ok' ? 'Estimate shown' : 'No indicative match',
     repayment: r.status === 'ok' ? Math.round(r.amount * 100) / 100 : '',
     indicative_rate: r.tier ? r.tier.rate : '',
-    est_fee: r.tier ? r.tier.estFee : '', monthly_fee: r.tier ? r.tier.monthlyFee : '',
+    credit_score: $('creditScore').selectedOptions[0].text, credit_score_used: state.creditScore === '' ? '' : scoreValue(),
+    est_fee: S().establishmentFee, origination_fee: S().originationFee, brokerage_pct: S().brokeragePct[state.loanType],
     brokerage: r.brokerage || '', naf: r.naf ? Math.round(r.naf * 100) / 100 : '',
     matched_tier: r.tier ? r.tier.id : '',
     rates_version: RATES.version, rates_updated: RATES.updated,
@@ -895,7 +939,7 @@ document.querySelectorAll('.seg[data-key] button').forEach(b => b.addEventListen
   render();
 }));
 $('year').addEventListener('change', e => { state.year = e.target.value; touched = true; render(); });
-['jobMonths','abnMonths'].forEach(id => $(id).addEventListener('change', e => { state[id] = e.target.value; touched = true; render(); }));
+['jobMonths','abnMonths','creditScore'].forEach(id => $(id).addEventListener('change', e => { state[id] = e.target.value; touched = true; render(); }));
 $('resid').addEventListener('input', e => { state.residualPct = +e.target.value; render(); updateResidOut(); });
 function updateResidOut() {
   const r = calc(state.term);
@@ -917,8 +961,8 @@ $('printBtn').addEventListener('click', async () => {
   window.print();
 });
 $('resetBtn').addEventListener('click', () => {
-  Object.assign(state, { loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
-  ['year','jobMonths','abnMonths'].forEach(id => $(id).value = '');
+  Object.assign(state, { loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
+  ['year','jobMonths','abnMonths','creditScore'].forEach(id => $(id).value = '');
   $('price').value = '45,000'; $('deposit').value = '0';
   touched = false; lastSaved = null; $('savedMsg').hidden = true; ACK = '';
   render(); updateResidOut();
