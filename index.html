@@ -434,6 +434,7 @@
         <div class="msg info" id="resInfo" hidden></div>
         <div class="msg info" id="resScore" hidden></div>
         <div class="msg err" id="resErr" hidden></div>
+        <div class="msg err" id="resWarn" hidden></div>
         <dl class="rows" id="resRows"></dl>
         <div class="actions">
           <button type="button" class="btn" id="saveBtn">Submit estimate</button>
@@ -643,10 +644,6 @@ function calc(term) {
   const residualPct = residualFor(term);
   const out = { status: 'ok', price, deposit, financed, depositPct, residualPct, term, freq: FREQ[state.freq] };
 
-  if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === 'boarding') {
-    return Object.assign(out, { status: 'refer', reason: 'Commercial loan for a client who is boarding' });
-  }
-
   const missing = [];
   if (state.condition === '') missing.push('New or used');
   if (state.fuel === '') missing.push('Fuel type');
@@ -657,9 +654,12 @@ function calc(term) {
   if (missing.length) return Object.assign(out, { status: 'incomplete', missing });
 
   if (deposit >= price) return Object.assign(out, { status: 'error', message: 'Check the deposit: it should be less than the vehicle price.' });
+  // Commercial boarders, and renters without comparable credit and under 20% deposit: still quote,
+  // but warn that full financials or 20% deposit plus trading bank statements are likely (Michael, 2026-11-12).
   const minDep = S().nonAssetBackedMinDepositPct;
-  if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === 'renting' && state.compCredit !== 'yes' && depositPct + 1e-9 < minDep) {
-    return Object.assign(out, { status: 'refer', reason: `Renter without comparable credit and less than a ${minDep}% deposit (${money(Math.ceil(price * minDep / 100), 0)})` });
+  if (state.loanType === 'commercial' && state.assetBacked === 'no' &&
+      (state.comLiving === 'boarding' || (state.comLiving === 'renting' && state.compCredit !== 'yes' && depositPct + 1e-9 < minDep))) {
+    out.warning = `Likely requirement for this profile: full financials, or a ${minDep}% deposit and bank statements showing trading.`;
   }
 
   const ctx = {
@@ -751,8 +751,8 @@ function render() {
 
   // Deposit hint
   const minDep = S().nonAssetBackedMinDepositPct;
-  $('depHint').textContent = isCom && state.assetBacked === 'no' && state.comLiving === 'renting' && state.compCredit !== 'yes' ? `Minimum ${minDep}% for renters without comparable credit` : 'Optional';
-  $('assetHint').textContent = `Owns or is paying off property. Renters need at least a ${minDep}% deposit unless they have comparable credit. Not available to boarders.`;
+  $('depHint').textContent = isCom && state.assetBacked === 'no' && (state.comLiving === 'boarding' || (state.comLiving === 'renting' && state.compCredit !== 'yes')) ? `${minDep}% deposit likely needed without full financials` : 'Optional';
+  $('assetHint').textContent = 'Owns or is paying off property.';
 
   const r = calc(state.term);
 
@@ -767,6 +767,8 @@ function render() {
   $('resEyebrow').textContent = `Estimated ${FREQ[state.freq].label.toLowerCase()} repayment`;
   $('resInfo').hidden = !(r.status === 'incomplete' || r.status === 'refer');
   $('resErr').hidden = r.status !== 'error';
+  $('resWarn').hidden = !(r.status === 'ok' && r.warning);
+  $('resWarn').textContent = r.warning || '';
   if (r.status === 'incomplete') $('resInfo').innerHTML = 'Answer these to see an estimate:<ul>' + r.missing.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>';
   if (r.status === 'refer') $('resInfo').innerHTML = '<strong>Refer to our office for assessment.</strong> Submit the estimate and our team will assess it and come back with options.<br><span style="font-weight:500">' + esc(r.reason) + '.</span>';
   if (r.status === 'error') $('resErr').textContent = r.message;
@@ -953,6 +955,7 @@ function buildPayload(ref, action) {
     residual_pct: r.residualPct, residual_amount: r.residual || 0,
     result: r.status === 'ok' ? 'Estimate shown' : 'Referred to office for assessment',
     refer_reason: r.status === 'refer' ? r.reason : '',
+    profile_warning: r.status === 'ok' && r.warning ? r.warning : '',
     repayment: r.status === 'ok' ? Math.round(r.amount * 100) / 100 : '',
     indicative_rate: r.tier ? r.tier.rate : '',
     credit_score: $('creditScore').selectedOptions[0].text, credit_score_used: state.creditScore === '' ? '' : scoreValue(),

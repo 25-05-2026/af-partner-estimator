@@ -39,7 +39,7 @@ const QUOTE_HEADERS = [
   'residential_status', 'employment_status', 'job_time',
   'asset_backed', 'living_situation', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
-  'credit_score', 'credit_score_used', 'result', 'refer_reason', 'repayment', 'indicative_rate', 'est_fee', 'origination_fee', 'brokerage_pct', 'brokerage', 'naf',
+  'credit_score', 'credit_score_used', 'result', 'refer_reason', 'profile_warning', 'repayment', 'indicative_rate', 'est_fee', 'origination_fee', 'brokerage_pct', 'brokerage', 'naf',
   'matched_tier', 'matched_lender', 'rates_version', 'rates_updated', 'disclaimer_ack', 'page', 'user_agent'
 ];
 
@@ -139,6 +139,7 @@ function buildEmail_(d) {
     ['Estimate shown to partner', [
       ['Result', v(d.result)],
       ['Refer reason', v(d.refer_reason)],
+      ['Profile warning', v(d.profile_warning)],
       ['Repayment', d.repayment !== '' && d.repayment !== undefined ? `${money(d.repayment)} ${freq}` : ''],
       ['Indicative rate', v(d.indicative_rate) ? `${d.indicative_rate}% p.a.` : ''],
       ['Lender tier', [v(d.matched_lender), v(d.matched_tier)].filter(Boolean).join(', ')],
