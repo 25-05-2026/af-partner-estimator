@@ -54,6 +54,8 @@ for r in rows:
     r['id'] = f'{code}-{counters[code]:03d}'
     r.setdefault('fuel', '')
     r.setdefault('brokerage_pct', '')
+    if code == 'RV':
+        r['age_at_end_max'] = 20   # RACV: vehicle no older than 20 years at end of term (Michael, 2026-11-12)
     if code == 'WP':
         r['brokerage_pct'] = 3   # Westpac Xpress special caps brokerage at 3% (Michael: quote it at 3%)
     # Pepper tiers (Michael, 2026-11-12): A = asset backed, B = renter, C = boarder
