@@ -37,7 +37,7 @@ const QUOTE_HEADERS = [
   'received', 'quote_ref', 'action', 'created', 'referrer_name', 'referrer_business', 'referrer_code',
   'client_name', 'client_first_name', 'client_last_name', 'client_mobile', 'client_email', 'client_consent', 'loan_type', 'vehicle_condition', 'vehicle_fuel', 'vehicle_year', 'vehicle_age_years', 'balloon_max_pct',
   'residential_status', 'employment_status', 'job_time',
-  'asset_backed', 'gst_registered', 'comparable_credit', 'abn_time',
+  'asset_backed', 'living_situation', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
   'credit_score', 'credit_score_used', 'result', 'repayment', 'indicative_rate', 'est_fee', 'origination_fee', 'brokerage_pct', 'brokerage', 'naf',
   'matched_tier', 'matched_lender', 'rates_version', 'rates_updated', 'disclaimer_ack', 'page', 'user_agent'
@@ -118,6 +118,7 @@ function buildEmail_(d) {
       ['Credit score', v(d.credit_score) + (v(d.credit_score) === "I don't know" ? ` (assumed ${v(d.credit_score_used)})` : '')]
     ].concat(isCom ? [
       ['Asset backed', v(d.asset_backed)],
+      ['Renting or boarding', v(d.living_situation)],
       ['GST registered', v(d.gst_registered)],
       ['Comparable credit', v(d.comparable_credit)],
       ['ABN running', v(d.abn_time)]

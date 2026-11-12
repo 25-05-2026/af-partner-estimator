@@ -24,13 +24,15 @@ MASTER = ['id', 'active', 'status_note', 'lender', 'product'] + PUBLIC[1:] + ['r
 # otherwise match every client. Off until Michael decides how to map them.
 RISK_GRADED = {'LT': 'Latitude prices on its own risk grade (no credit score on the card)',
                'AN': 'Angle rates vary by credit rating with no score bands on the card',
-               'PP': 'Pepper tiers A to C are its own risk grades with no stated criteria'}
+}
 
 
 def status(code, r):
     text = (r['product'] + ' ' + r['notes']).lower()
     if code in RISK_GRADED:
         return RISK_GRADED[code]
+    if code == 'PP' and 'private sale' in r['product'].lower():
+        return 'Private sale pricing (partners quote dealer sales)'
     if code == 'WP':
         return 'Westpac Xpress special caps brokerage at 3%; AF charges 4% on commercial'
     if 'spring promo' in r['product'].lower():
@@ -49,6 +51,11 @@ for r in rows:
     r = dict(r)
     r['id'] = f'{code}-{counters[code]:03d}'
     r.setdefault('fuel', '')
+    # Pepper tiers (Michael, 2026-11-12): A = asset backed, B = renter, C = boarder
+    if code == 'PP':
+        tier = 'A' if 'Tier A' in r['product'] else 'B' if 'Tier B' in r['product'] else 'C'
+        r['asset_backed'] = 'Y' if tier == 'A' else 'N'
+        r['residential'] = {'A': '', 'B': 'renting', 'C': 'boarding'}[tier]
     if 'electric' in r['product'].lower():
         r['fuel'] = 'hybrid,bev'   # Resimac EV pricing covers fully electric, hybrid and plug-in hybrid
     note = status(code, r)

@@ -340,6 +340,13 @@
               </div>
               <div class="hint" id="assetHint">Owns or is paying off property. Non asset backed clients need at least a 20% deposit.</div>
             </div>
+            <div class="field" id="comLivingField" hidden>
+              <span class="label" id="lblLiving">Renting or boarding?</span>
+              <div class="seg" role="group" aria-labelledby="lblLiving" data-key="comLiving">
+                <button type="button" data-val="renting">Renting</button>
+                <button type="button" data-val="boarding">Boarding</button>
+              </div>
+            </div>
             <div class="field" data-req="gst">
               <span class="label" id="lblGst">GST registered?</span>
               <div class="seg" role="group" aria-labelledby="lblGst" data-key="gst">
@@ -499,7 +506,7 @@ let RATES = { settings: {}, tiers: [] };
 const S = () => RATES.settings;
 const state = {
   loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0,
-  residential: '', employment: '', jobMonths: '', creditScore: '',
+  residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '',
   assetBacked: '', gst: '', compCredit: '', abnMonths: ''
 };
 let lastSaved = null;   // { sig, ref }
@@ -605,8 +612,8 @@ function tierMatches(t, c) {
   if (t.maxLoan !== null && c.financed > t.maxLoan) return false;
   if (t.minDepositPct !== null && c.depositPct < t.minDepositPct) return false;
   if (c.residualPct > 0 && t.maxResidualPct !== null && c.residualPct > t.maxResidualPct) return false;
+  if (t.residential.length && !t.residential.includes(c.residential)) return false;
   if (c.loanType === 'consumer') {
-    if (t.residential.length && !t.residential.includes(c.residential)) return false;
     if (t.employment.length && !t.employment.includes(c.employment)) return false;
     if (t.jobMonthsMin !== null && c.jobMonths < t.jobMonthsMin) return false;
   } else {
@@ -631,6 +638,7 @@ function calc(term) {
   if (state.fuel === '') missing.push('Fuel type');
   if (state.year === '') missing.push('Year of manufacture');
   REQUIRED[state.loanType].forEach(([k, l]) => { if (state[k] === '') missing.push(l); });
+  if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === '') missing.push('Renting or boarding');
   if (price <= 0) missing.push('Vehicle price');
   if (missing.length) return Object.assign(out, { status: 'incomplete', missing });
 
@@ -642,7 +650,8 @@ function calc(term) {
 
   const ctx = {
     loanType: state.loanType, condition: state.condition, fuel: state.fuel, age: vehicleAge(), term, financed, depositPct, residualPct,
-    residential: state.residential, employment: state.employment, jobMonths: +state.jobMonths, score: scoreValue(),
+    residential: state.loanType === 'commercial' ? (state.assetBacked === 'yes' ? 'owning' : state.comLiving) : state.residential,
+    employment: state.employment, jobMonths: +state.jobMonths, score: scoreValue(),
     assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths
   };
   const f = FREQ[state.freq];
@@ -700,6 +709,7 @@ function render() {
   const isCom = state.loanType === 'commercial';
   $('consumerQs').hidden = isCom;
   $('commercialQs').hidden = !isCom;
+  $('comLivingField').hidden = !(isCom && state.assetBacked === 'no');
 
   document.querySelectorAll('.seg[data-key]').forEach(seg =>
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', state[seg.dataset.key] === b.dataset.val)));
@@ -897,6 +907,7 @@ function buildPayload(ref, action) {
     employment_status: isCom ? '' : LABELS.employment[state.employment] || '',
     job_time: isCom ? '' : $('jobMonths').selectedOptions[0].text,
     asset_backed: isCom ? LABELS.yesno[state.assetBacked] : '',
+    living_situation: isCom && state.assetBacked === 'no' ? LABELS.residential[state.comLiving] || '' : '',
     gst_registered: isCom ? LABELS.yesno[state.gst] : '',
     comparable_credit: isCom ? LABELS.yesno[state.compCredit] : '',
     abn_time: isCom ? $('abnMonths').selectedOptions[0].text : '',
@@ -973,7 +984,7 @@ $('printBtn').addEventListener('click', async () => {
   window.print();
 });
 $('resetBtn').addEventListener('click', () => {
-  Object.assign(state, { loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
+  Object.assign(state, { loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths','creditScore'].forEach(id => $(id).value = '');
   $('price').value = '45,000'; $('deposit').value = '0';
   touched = false; lastSaved = null; $('savedMsg').hidden = true; ACK = '';
