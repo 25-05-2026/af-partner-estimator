@@ -144,12 +144,15 @@
   .disclaimer strong{color:var(--body)}
 
   /* Disclaimer gate */
-  .gate{position:fixed; inset:0; background:rgba(15,20,36,.72); backdrop-filter:blur(4px); display:grid; place-items:center; padding:16px; z-index:50; overflow:auto}
+  .gate{position:fixed; inset:0; background:rgba(15,20,36,.72); backdrop-filter:blur(4px); display:flex; padding:16px; z-index:50; overflow:auto}
   .gate[hidden]{display:none}
-  .gate .panel{background:#fff; border-radius:16px; max-width:560px; width:100%; padding:28px; box-shadow:0 30px 80px rgba(0,0,0,.35)}
+  .gate .panel{background:#fff; border-radius:16px; max-width:620px; margin:auto; width:100%; padding:28px; box-shadow:0 30px 80px rgba(0,0,0,.35)}
   .gate h2{margin:6px 0 12px; color:var(--ink); letter-spacing:-.02em; font-size:1.45rem}
   .gate .eyebrow{color:var(--green-dk2)}
-  .gate .terms-box{background:var(--bg-alt); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:.88rem; max-height:40vh; overflow:auto; margin-bottom:18px}
+  .gate .terms-box{background:var(--bg-alt); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:.88rem; max-height:26vh; overflow:auto; margin-bottom:18px}
+  .gate .sub-h{font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--green-dk2); font-weight:700; margin:4px 0 10px}
+  .gate .field{margin-bottom:14px}
+  .gate .msg{margin:0 0 14px}
   .gate .terms-box p{margin:0 0 10px} .gate .terms-box p:last-child{margin:0}
   .gate .btn{box-shadow:none}
 
@@ -179,19 +182,37 @@
       <p><strong>This calculator provides indicative repayment estimates only.</strong> It is not a quote, an offer, a pre-approval or an approval of credit, and no rate or repayment is guaranteed.</p>
       <p>Actual rates, fees and repayments depend on a full credit assessment of the applicant, verification of the information provided, the vehicle being financed and each lender's criteria at the time of application. Lender rates and policies change regularly and without notice.</p>
       <p>Please do not tell a client they are approved, qualify for a particular rate or will receive a particular repayment. Refer all clients to Acquired Financial Services for a formal assessment and quote.</p>
-      <p>Details you save in this tool are sent to Acquired Financial Services so we know how each estimate was worked out. Only enter client details with the client's permission.</p>
+      <p>Details you submit in this tool are sent to Acquired Financial Services so we know how each estimate was worked out. Only enter client details with the client's permission.</p>
       <p>Acquired Financial Services, Australian Credit Licence 488607.</p>
+    </div>
+    <div class="sub-h">You, the referrer</div>
+    <div class="field">
+      <div class="two">
+        <div><label class="label" for="gName">Your name</label><input class="txt" id="gName" autocomplete="off"></div>
+        <div><label class="label" for="gBiz">Your business</label><input class="txt" id="gBiz" autocomplete="off"></div>
+      </div>
+    </div>
+    <div class="sub-h">Your client</div>
+    <div class="field">
+      <div class="two">
+        <div><label class="label" for="cFirst">First name</label><input class="txt" id="cFirst" autocomplete="off"></div>
+        <div><label class="label" for="cLast">Last name</label><input class="txt" id="cLast" autocomplete="off"></div>
+      </div>
     </div>
     <div class="field">
       <div class="two">
-        <div><label class="label" for="gName">Your name</label><input class="txt" id="gName" autocomplete="name"></div>
-        <div><label class="label" for="gBiz">Your business</label><input class="txt" id="gBiz" autocomplete="organization"></div>
+        <div><label class="label" for="cPhone">Mobile</label><input class="txt" id="cPhone" inputmode="tel" autocomplete="off" placeholder="04xx xxx xxx"></div>
+        <div><label class="label" for="cEmail">Email <span class="opt">(optional)</span></label><input class="txt" id="cEmail" type="email" inputmode="email" autocomplete="off"></div>
       </div>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="cConsent"> <span>The client agrees to share these details with Acquired Financial Services so we can contact them about this estimate.</span></label>
     </div>
     <div class="field">
       <label class="check"><input type="checkbox" id="gAck"> <span>I understand this calculator is for indicative purposes only and is not a quote, offer or approval of credit.</span></label>
     </div>
-    <button type="button" class="btn block" id="gGo" disabled>Continue to calculator</button>
+    <div class="msg err" id="gErr" hidden></div>
+    <button type="button" class="btn block" id="gGo">Continue to calculator</button>
   </div>
 </div>
 
@@ -315,26 +336,6 @@
             </div>
           </div>
 
-          <div class="opt-box" id="clientBox">
-            <span class="label" style="margin-bottom:4px">Client details</span>
-            <div class="hint" style="margin:0 0 14px">Needed to submit, so we can match this estimate to the client when they apply.</div>
-            <div class="field">
-              <div class="two">
-                <div><label class="label" for="cFirst">First name</label><input class="txt" id="cFirst" autocomplete="off"></div>
-                <div><label class="label" for="cLast">Last name</label><input class="txt" id="cLast" autocomplete="off"></div>
-              </div>
-            </div>
-            <div class="field">
-              <div class="two">
-                <div><label class="label" for="cPhone">Mobile</label><input class="txt" id="cPhone" inputmode="tel" autocomplete="off" placeholder="04xx xxx xxx"></div>
-                <div><label class="label" for="cEmail">Email <span class="opt">(optional)</span></label><input class="txt" id="cEmail" type="email" inputmode="email" autocomplete="off"></div>
-              </div>
-            </div>
-            <div class="field">
-              <label class="check"><input type="checkbox" id="cConsent"> <span>The client agrees to share these details with Acquired Financial Services so we can contact them about this estimate.</span></label>
-            </div>
-            <div class="msg err" id="clientErr" hidden style="margin-top:0"></div>
-          </div>
         </section>
 
         <!-- 3. Loan -->
@@ -385,7 +386,7 @@
         <div class="actions">
           <button type="button" class="btn" id="saveBtn">Submit estimate</button>
           <button type="button" class="btn ghost" id="printBtn">Print</button>
-          <button type="button" class="btn ghost" id="resetBtn">Reset</button>
+          <button type="button" class="btn ghost" id="resetBtn">New client</button>
         </div>
         <div class="saved" id="savedMsg" hidden></div>
         <div class="fine">Indicative only. Not a quote, offer or approval of credit. Subject to full credit assessment and lender criteria. <span id="ratesStamp"></span></div>
@@ -439,11 +440,11 @@ const THIS_YEAR = new Date().getFullYear();
 
 /* Maximum balloon % by vehicle condition, age and term (commercial only).
    Used when the rate card has no balloons table. A term with no figure means no balloon.
-   From the commercial lender chart, plus a 40% balloon on new vehicles over 60 months. */
+   From the commercial lender chart, plus 40% over 60 months on new and used up to 4 years old. */
 const DEFAULT_BALLOONS = [
   { condition: 'new',  used_age_min: '', used_age_max: '', 36: 40, 48: 35, 60: 40, 72: 25, 84: 25 },
-  { condition: 'used', used_age_min: 0,  used_age_max: 3,  36: 30, 48: 25, 60: 20, 72: 15, 84: 15 },
-  { condition: 'used', used_age_min: 4,  used_age_max: 4,  36: 30, 48: 25, 60: 20, 72: 15, 84: 0 },
+  { condition: 'used', used_age_min: 0,  used_age_max: 3,  36: 30, 48: 25, 60: 40, 72: 15, 84: 15 },
+  { condition: 'used', used_age_min: 4,  used_age_max: 4,  36: 30, 48: 25, 60: 40, 72: 15, 84: 0 },
   { condition: 'used', used_age_min: 5,  used_age_max: 5,  36: 30, 48: 25, 60: 20, 72: 0,  84: 0 },
   { condition: 'used', used_age_min: 6,  used_age_max: 6,  36: 20, 48: 10, 60: 0,  72: 0,  84: 0 },
   { condition: 'used', used_age_min: 7,  used_age_max: 7,  36: 20, 48: 0,  60: 0,  72: 0,  84: 0 },
@@ -679,9 +680,6 @@ function render() {
   $('depHint').textContent = isCom && state.assetBacked === 'no' ? `Minimum ${minDep}% for non asset backed` : 'Optional';
   $('assetHint').textContent = `Owns or is paying off property. Non asset backed clients need at least a ${minDep}% deposit.`;
 
-  // Once a submit was attempted, keep the client details check live
-  if (clientChecked) showClientErrors();
-
   const r = calc(state.term);
 
   // Highlight unanswered questions only once the user has started
@@ -747,24 +745,47 @@ let touched = false;
 /* ---------- Referrer ---------- */
 const params = new URLSearchParams(location.search);
 if (params.get('ref')) store.set('af_ref_code', params.get('ref'));
-function referrer() { return store.get('af_referrer', { name: '', business: '' }); }
+// Referrer and acknowledgement live only for this page load: every refresh asks again.
+let REF = { name: '', business: '' }, ACK = '', gateTried = false;
+function referrer() { return REF; }
 function showWho() {
-  const r = referrer();
-  $('who').innerHTML = r.name ? `Estimating as <strong>${esc(r.name)}</strong>${r.business ? ', ' + esc(r.business) : ''} &middot; <button type="button" class="linkbtn" id="changeWho">Change</button>` : '';
-  const c = $('changeWho'); if (c) c.addEventListener('click', openGate);
+  const c = client();
+  $('who').innerHTML = REF.name ? `Referrer <strong>${esc(REF.name)}</strong>${REF.business ? ', ' + esc(REF.business) : ''}<br>Client <strong>${esc(c.first + ' ' + c.last)}</strong> &middot; <button type="button" class="linkbtn" id="changeWho">Change</button>` : '';
+  const ch = $('changeWho'); if (ch) ch.addEventListener('click', () => openGate(true));
 }
-function openGate() {
-  const r = referrer();
-  $('gName').value = r.name; $('gBiz').value = r.business; $('gAck').checked = false;
-  $('gate').hidden = false; gateCheck();
+// keep: true keeps the details already entered (Change); false starts with a blank client.
+function openGate(keep) {
+  if (!keep) { ['cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).value = ''); $('cConsent').checked = false; }
+  $('gName').value = REF.name; $('gBiz').value = REF.business;
+  $('gAck').checked = false; gateTried = false; $('gErr').hidden = true;
+  ['gName','gBiz','cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).style.borderColor = '');
+  $('gate').hidden = false; $('gate').scrollTop = 0;
 }
-function gateCheck() { $('gGo').disabled = !($('gAck').checked && $('gName').value.trim() && $('gBiz').value.trim()); }
-['gName','gBiz','gAck'].forEach(id => $(id).addEventListener('input', gateCheck));
-$('gAck').addEventListener('change', gateCheck);
+function gateProblems() {
+  const p = [];
+  if (!$('gName').value.trim()) p.push(['gName', 'Your name']);
+  if (!$('gBiz').value.trim()) p.push(['gBiz', 'Your business']);
+  p.push(...clientProblems());
+  if (!$('gAck').checked) p.push(['gAck', 'Your acknowledgement that this is for indicative purposes only']);
+  return p;
+}
+function showGateErrors() {
+  const p = gateProblems();
+  ['gName','gBiz','cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).style.borderColor = p.some(x => x[0] === id) ? '#F1C9C4' : '');
+  $('gErr').hidden = !p.length;
+  $('gErr').innerHTML = 'Please complete:<ul>' + p.map(x => `<li>${esc(x[1])}</li>`).join('') + '</ul>';
+  return p;
+}
+['gName','gBiz','cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).addEventListener('input', () => { if (gateTried) showGateErrors(); }));
+['gAck','cConsent'].forEach(id => $(id).addEventListener('change', () => { if (gateTried) showGateErrors(); }));
+$('cPhone').addEventListener('blur', () => { const m = cleanMobile($('cPhone').value); if (m) $('cPhone').value = m; });
 $('gGo').addEventListener('click', () => {
-  store.set('af_referrer', { name: $('gName').value.trim(), business: $('gBiz').value.trim() });
-  try { sessionStorage.setItem('af_ack', new Date().toISOString()); } catch {}
-  $('gate').hidden = true; showWho();
+  gateTried = true;
+  const p = showGateErrors();
+  if (p.length) { $(p[0][0]).focus(); return; }
+  REF = { name: $('gName').value.trim(), business: $('gBiz').value.trim() };
+  ACK = new Date().toISOString();
+  $('gate').hidden = true; showWho(); render();
 });
 
 /* ---------- Capture ---------- */
@@ -773,7 +794,6 @@ function signature() {
 }
 
 /* ---------- Client details (required to submit or print) ---------- */
-let clientChecked = false;
 // Australian mobile: 04xxxxxxxx or +614xxxxxxxx. Returned as 0412 345 678.
 function cleanMobile(s) {
   let d = String(s).replace(/[^0-9+]/g, '');
@@ -795,18 +815,10 @@ function clientProblems() {
   if (!c.consent) p.push(['cConsent', 'The client\'s agreement to share their details']);
   return p;
 }
-function showClientErrors() {
-  const p = clientProblems();
-  ['cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).style.borderColor = p.some(x => x[0] === id) ? '#F1C9C4' : '');
-  $('clientErr').hidden = !p.length;
-  $('clientErr').innerHTML = 'To submit, please add:<ul>' + p.map(x => `<li>${esc(x[1])}</li>`).join('') + '</ul>';
-  return p;
-}
+// Safety net at submit time: details come from the start screen.
 function clientOk() {
-  clientChecked = true;
-  const p = showClientErrors();
-  if (p.length) { $('clientBox').scrollIntoView({ behavior: 'smooth', block: 'center' }); $(p[0][0]).focus({ preventScroll: true }); return false; }
-  return true;
+  if (REF.name && ACK && !clientProblems().length) return true;
+  openGate(true); gateTried = true; showGateErrors(); return false;
 }
 function makeRef() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
@@ -820,7 +832,7 @@ function buildPayload(ref, action) {
     key: CONFIG.captureKey,
     quote_ref: ref, action, created: new Date().toISOString(),
     referrer_name: ref_.name, referrer_business: ref_.business, referrer_code: store.get('af_ref_code', ''),
-    disclaimer_ack: (() => { try { return sessionStorage.getItem('af_ack') || ''; } catch { return ''; } })(),
+    disclaimer_ack: ACK,
     client_name: `${client().first} ${client().last}`.trim(), client_first_name: client().first, client_last_name: client().last,
     client_mobile: client().mobile, client_email: client().email, client_consent: client().consent ? 'Yes' : 'No',
     loan_type: LABELS.loanType[state.loanType],
@@ -895,9 +907,6 @@ function updateResidOut() {
   el.addEventListener('blur', () => { el.value = parseMoney(el.value).toLocaleString('en-AU', { maximumFractionDigits: 2 }); render(); });
   el.addEventListener('focus', () => el.select());
 });
-['cFirst','cLast','cPhone','cEmail'].forEach(id => $(id).addEventListener('input', render));
-$('cPhone').addEventListener('blur', () => { const m = cleanMobile($('cPhone').value); if (m) $('cPhone').value = m; });
-$('cConsent').addEventListener('change', render);
 
 $('saveBtn').addEventListener('click', async () => { if (!clientOk()) return; $('saveBtn').disabled = true; await capture('save'); });
 $('printBtn').addEventListener('click', async () => {
@@ -910,10 +919,10 @@ $('printBtn').addEventListener('click', async () => {
 $('resetBtn').addEventListener('click', () => {
   Object.assign(state, { loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths'].forEach(id => $(id).value = '');
-  $('price').value = '45,000'; $('deposit').value = '0'; ['cFirst','cLast','cPhone','cEmail'].forEach(id => { $(id).value = ''; $(id).style.borderColor = ''; });
-  $('cConsent').checked = false; $('clientErr').hidden = true; clientChecked = false;
-  touched = false; lastSaved = null; $('savedMsg').hidden = true;
+  $('price').value = '45,000'; $('deposit').value = '0';
+  touched = false; lastSaved = null; $('savedMsg').hidden = true; ACK = '';
   render(); updateResidOut();
+  openGate(false);   // new client: ask for client details and the acknowledgement again
 });
 
 /* ---------- Start ---------- */
@@ -923,9 +932,9 @@ $('resetBtn').addEventListener('click', () => {
   catch (e) { RATES = normaliseRates({}); }
   $('sampleBanner').hidden = !RATES.sample;
   buildTerms();
-  render(); updateResidOut(); showWho();
-  let acked = false; try { acked = !!sessionStorage.getItem('af_ack'); } catch {}
-  if (!acked || !referrer().name) openGate(); else $('gate').hidden = true;
+  render(); updateResidOut();
+  try { localStorage.removeItem('af_referrer'); sessionStorage.removeItem('af_ack'); } catch {}   // from earlier versions
+  openGate(false);   // every page load: referrer, client and disclaimer
   flushQueue();
 })();
 </script>

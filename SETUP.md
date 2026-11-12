@@ -57,7 +57,7 @@ they are recorded in the Quotes tab.
 The **Balloons** tab sets the maximum balloon % for each vehicle and term. One row for new vehicles,
 then one row per used age band (`used_age_min` to `used_age_max` years, blank max = and older), with a
 column per term in months (12 to 84). A blank or 0 means no balloon. It ships with the commercial
-lender chart plus 40% on new vehicles over 60 months. `residualMaxPct` in Settings is an extra hard
+lender chart plus 40% over 60 months on new vehicles and used vehicles up to 4 years old. `residualMaxPct` in Settings is an extra hard
 cap (40%). If the partner's chosen balloon is above the limit for a term, it is reduced to the limit
 for that term and the page says so.
 
@@ -69,7 +69,7 @@ prints on the PDF. Offline saves queue on the device and send next time the page
 
 Give each partner their own link with `?ref=CODE` (e.g. `...?ref=SMITHMOTORS`) to tag their quotes.
 
-Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client (name, mobile, email), the referring partner and the estimate. Client first name, last name, mobile and consent are required to submit or print, so each estimate can be matched to the lead when it comes in. Run `testEmail` from the editor to see a sample.
+Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client (name, mobile, email), the referring partner and the estimate. Every page load (and New client) opens a start screen that asks for the referrer, the client (first name, last name, mobile, optional email, consent) and the indicative only acknowledgement. Nothing is remembered between page loads, so several referrers can share one device. Run `testEmail` from the editor to see a sample.
 
 ## Local preview
 

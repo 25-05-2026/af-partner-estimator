@@ -287,8 +287,8 @@ function setup() {
     const bal = [
       ['condition', 'used_age_min', 'used_age_max', 12, 24, 36, 48, 60, 72, 84],
       ['new', '', '', 0, 0, 40, 35, 40, 25, 25],
-      ['used', 0, 3, 0, 0, 30, 25, 20, 15, 15],
-      ['used', 4, 4, 0, 0, 30, 25, 20, 15, 0],
+      ['used', 0, 3, 0, 0, 30, 25, 40, 15, 15],
+      ['used', 4, 4, 0, 0, 30, 25, 40, 15, 0],
       ['used', 5, 5, 0, 0, 30, 25, 20, 0, 0],
       ['used', 6, 6, 0, 0, 20, 10, 0, 0, 0],
       ['used', 7, 7, 0, 0, 20, 0, 0, 0, 0],
@@ -297,7 +297,7 @@ function setup() {
     balloons.getRange(1, 1, bal.length, bal[0].length).setValues(bal);
     balloons.getRange(1, 1, 1, bal[0].length).setFontWeight('bold');
     balloons.setFrozenRows(1);
-    balloons.getRange(bal.length + 2, 1).setValue('Max balloon % by term in months. Commercial only. used_age_max blank = and older. New vehicles 60 months set to 40% (lender exception).');
+    balloons.getRange(bal.length + 2, 1).setValue('Max balloon % by term in months. Commercial only. used_age_max blank = and older. 60 months set to 40% for new and used up to 4 years old (lender exception).');
   }
 
   const quotes = sheet_(TAB_QUOTES);

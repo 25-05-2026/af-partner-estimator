@@ -15,8 +15,8 @@
   },
   "balloons": [
     { "condition": "new",  "used_age_min": "", "used_age_max": "", "12": 0, "24": 0, "36": 40, "48": 35, "60": 40, "72": 25, "84": 25 },
-    { "condition": "used", "used_age_min": 0,  "used_age_max": 3,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 20, "72": 15, "84": 15 },
-    { "condition": "used", "used_age_min": 4,  "used_age_max": 4,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 20, "72": 15, "84": 0 },
+    { "condition": "used", "used_age_min": 0,  "used_age_max": 3,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 40, "72": 15, "84": 15 },
+    { "condition": "used", "used_age_min": 4,  "used_age_max": 4,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 40, "72": 15, "84": 0 },
     { "condition": "used", "used_age_min": 5,  "used_age_max": 5,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 20, "72": 0,  "84": 0 },
     { "condition": "used", "used_age_min": 6,  "used_age_max": 6,  "12": 0, "24": 0, "36": 20, "48": 10, "60": 0,  "72": 0,  "84": 0 },
     { "condition": "used", "used_age_min": 7,  "used_age_max": 7,  "12": 0, "24": 0, "36": 20, "48": 0,  "60": 0,  "72": 0,  "84": 0 },
