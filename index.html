@@ -384,6 +384,14 @@
                 <option value="72">6 years or more</option>
               </select>
             </div>
+            <div class="field" data-req="financials">
+              <span class="label" id="lblFin">Will the client supply full financials?</span>
+              <div class="seg" role="group" aria-labelledby="lblFin" data-key="financials">
+                <button type="button" data-val="yes">Yes, full financials</button>
+                <button type="button" data-val="no">No, low doc</button>
+              </div>
+              <div class="hint">Tax returns and financial statements. Some lenders only take renters, boarders or older vehicles with full financials.</div>
+            </div>
           </div>
 
         </section>
@@ -487,7 +495,7 @@ const LABELS = {
 };
 const REQUIRED = {
   consumer:   [['creditScore','Credit score'], ['residential','Residential status'], ['employment','Employment status'], ['jobMonths','Time in current job']],
-  commercial: [['creditScore','Credit score'], ['assetBacked','Asset backed'], ['gst','GST registered'], ['compCredit','Comparable credit'], ['abnMonths','ABN time running']]
+  commercial: [['creditScore','Credit score'], ['assetBacked','Asset backed'], ['gst','GST registered'], ['compCredit','Comparable credit'], ['abnMonths','ABN time running'], ['financials','Full financials or low doc']]
 };
 const THIS_YEAR = new Date().getFullYear();
 
@@ -517,7 +525,7 @@ let RATES = { settings: {}, tiers: [] };
 const S = () => RATES.settings;
 const state = {
   loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0,
-  residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '',
+  residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '', financials: '',
   assetBacked: '', gst: '', compCredit: '', abnMonths: ''
 };
 let lastSaved = null;   // { sig, ref }
@@ -614,7 +622,7 @@ function tierMatches(t, c) {
   if (t.scoreMin !== null && c.score < t.scoreMin) return false;
   if (t.scoreMax !== null && c.score > t.scoreMax) return false;
   if (t.minTerm !== null && c.term < t.minTerm) return false;
-  if (t.docTypes.length && !t.docTypes.some(d => S().docTypes.includes(d))) return false;
+  if (t.docTypes.length && !t.docTypes.some(d => c.docTypes.includes(d))) return false;
   if (t.ageMin !== null && c.age < t.ageMin) return false;
   if (t.ageMax !== null && c.age > t.ageMax) return false;
   if (t.ageEndMax !== null && c.age + c.term / 12 > t.ageEndMax) return false;
@@ -657,7 +665,7 @@ function calc(term) {
   // Commercial boarders, and renters without comparable credit and under 20% deposit: still quote,
   // but warn that full financials or 20% deposit plus trading bank statements are likely (Michael, 2026-11-12).
   const minDep = S().nonAssetBackedMinDepositPct;
-  if (state.loanType === 'commercial' && state.assetBacked === 'no' &&
+  if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.financials !== 'yes' &&
       (state.comLiving === 'boarding' || (state.comLiving === 'renting' && state.compCredit !== 'yes' && depositPct + 1e-9 < minDep))) {
     out.warning = `Likely requirement for this profile: full financials, or a ${minDep}% deposit and bank statements showing trading income.`;
   }
@@ -666,7 +674,8 @@ function calc(term) {
     loanType: state.loanType, condition: state.condition, fuel: state.fuel, age: vehicleAge(), term, financed, depositPct, residualPct,
     residential: state.loanType === 'commercial' ? (state.assetBacked === 'yes' ? 'owning' : state.comLiving) : state.residential,
     employment: state.employment, jobMonths: +state.jobMonths, score: scoreValue(),
-    assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths
+    assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths,
+    docTypes: state.loanType === 'commercial' && state.financials === 'yes' ? S().docTypes.concat(['full_doc']) : S().docTypes
   };
   const f = FREQ[state.freq];
   const inAdv = S().inAdvance[state.loanType];
@@ -751,7 +760,7 @@ function render() {
 
   // Deposit hint
   const minDep = S().nonAssetBackedMinDepositPct;
-  $('depHint').textContent = isCom && state.assetBacked === 'no' && (state.comLiving === 'boarding' || (state.comLiving === 'renting' && state.compCredit !== 'yes')) ? `${minDep}% deposit likely needed without full financials` : 'Optional';
+  $('depHint').textContent = isCom && state.assetBacked === 'no' && state.financials !== 'yes' && (state.comLiving === 'boarding' || (state.comLiving === 'renting' && state.compCredit !== 'yes')) ? `${minDep}% deposit likely needed without full financials` : 'Optional';
   $('assetHint').textContent = 'Owns or is paying off property.';
 
   const r = calc(state.term);
@@ -950,6 +959,7 @@ function buildPayload(ref, action) {
     gst_registered: isCom ? LABELS.yesno[state.gst] : '',
     comparable_credit: isCom ? LABELS.yesno[state.compCredit] : '',
     abn_time: isCom ? $('abnMonths').selectedOptions[0].text : '',
+    financials: isCom ? ({ yes: 'Full financials', no: 'Low doc' }[state.financials] || '') : '',
     vehicle_price: r.price, deposit: r.deposit, amount_financed: r.financed,
     term_months: state.term, frequency: FREQ[state.freq].label,
     residual_pct: r.residualPct, residual_amount: r.residual || 0,
@@ -1025,7 +1035,7 @@ $('printBtn').addEventListener('click', async () => {
   window.print();
 });
 $('resetBtn').addEventListener('click', () => {
-  Object.assign(state, { loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
+  Object.assign(state, { loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '', financials: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths','creditScore'].forEach(id => $(id).value = '');
   $('price').value = '0'; $('deposit').value = '0';
   touched = false; lastSaved = null; $('savedMsg').hidden = true; ACK = '';

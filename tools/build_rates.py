@@ -57,6 +57,11 @@ for r in rows:
     if code == 'RV':
         r['age_at_end_max'] = 20   # RACV: vehicle no older than 20 years at end of term (Michael, 2026-11-12)
     if code == 'WP':
+        # Westpac Xpress (Michael, 2026-11-12): low doc product, asset backed only (no renters or boarders),
+        # vehicle 5 years or newer. Older vehicles, renters and boarders need Westpac full doc (no rate card yet).
+        r['doc_type'] = 'low_doc'
+        r['asset_backed'] = 'Y'
+        r['vehicle_age_max'] = 5
         r['brokerage_pct'] = 3   # Westpac Xpress special caps brokerage at 3% (Michael: quote it at 3%)
     # Pepper tiers (Michael, 2026-11-12): A = asset backed, B = renter, C = boarder
     if code == 'PP':
