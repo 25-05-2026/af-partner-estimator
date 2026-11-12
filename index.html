@@ -771,7 +771,6 @@ function render() {
   if (r.price > 0) rows.push(['Amount financed', money(r.financed, 0)]);
   if (ok) {
     if (r.residual > 0) rows.push(['Residual', `${money(r.residual, 0)} (${r.residualPct}%)`]);
-    rows.push(['Fees and charges financed', money(r.naf - r.financed, 0)]);
     rows.push(['Number of repayments', `${r.count} ${r.freq.label.toLowerCase()}`]);
     if (S().showRate) rows.push(['Indicative rate', r.tier.rate.toFixed(2) + '% p.a.']);
   }
