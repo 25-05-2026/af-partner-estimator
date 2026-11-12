@@ -384,7 +384,7 @@
           <div class="field two">
             <div>
               <label class="label" for="price">Vehicle price</label>
-              <div class="money"><span>$</span><input id="price" inputmode="decimal" autocomplete="off" value="45,000"></div>
+              <div class="money"><span>$</span><input id="price" inputmode="decimal" autocomplete="off" value="0"></div>
               <div class="hint">Drive away, GST inclusive</div>
             </div>
             <div>
@@ -991,7 +991,7 @@ $('printBtn').addEventListener('click', async () => {
 $('resetBtn').addEventListener('click', () => {
   Object.assign(state, { loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', comLiving: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths','creditScore'].forEach(id => $(id).value = '');
-  $('price').value = '45,000'; $('deposit').value = '0';
+  $('price').value = '0'; $('deposit').value = '0';
   touched = false; lastSaved = null; $('savedMsg').hidden = true; ACK = '';
   render(); updateResidOut();
   openGate(false);   // new client: ask for client details and the acknowledgement again
