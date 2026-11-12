@@ -22,8 +22,8 @@ MASTER = ['id', 'active', 'status_note', 'lender', 'product'] + PUBLIC[1:] + ['r
 
 # Lenders that price on their own risk grade with no credit score mapping: the cheapest grade would
 # otherwise match every client. Off until Michael decides how to map them.
-RISK_GRADED = {'LT': 'Latitude prices on its own risk grade (no credit score on the card)',
-               'AN': 'Angle rates vary by credit rating with no score bands on the card',
+RISK_GRADED = {'LT': 'Card row replaced by the estimated credit score mapping rows below',
+               'AN': 'Card row replaced by the estimated credit score mapping rows below',
 }
 
 
@@ -98,6 +98,40 @@ for r in out:
         e['notes'] = ('EV discount 1% advised by Michael 2026-11-12, not on the card. ' if code == 'MT' else 'EV discount 1% per card. ') + r['notes']
         extra.append(e)
 out += extra
+
+# ---- Estimated credit score mappings (Michael, 2026-11-12: "just guesstimate") ----
+BASE = {k: '' for k in MASTER}
+def add(code, product, notes, **kw):
+    counters[code] += 1
+    r = dict(BASE, id=f'{code}-{counters[code]:03d}', active='Y', status_note='', loan_type='consumer',
+             product=product, notes='ESTIMATED mapping, not from the card. ' + notes, source='estimate', fuel='', brokerage_pct='')
+    r.update(kw)
+    out.append(r)
+
+# Latitude: strong files (800+) all get tier 1 whatever their job or living situation. Below that the
+# profile matters: a stable profile (buying, owning or renting; full or part time; 6+ months in the job)
+# gets the better rate, anyone else the next tier down.
+LT_BANDS = [  # (score_min, score_max, stable rate, other rate)
+    (800, '', 8.99, 8.99), (700, 799, 10.99, 12.99), (600, 699, 12.99, 14.99),
+    (500, 599, 14.99, 17.99), (400, 499, 17.99, 22.99)]
+for lo, hi, stable, other in LT_BANDS:
+    lat = dict(lender='Latitude Financial Services', max_loan=200000, credit_score_min=lo, credit_score_max=hi,
+               rate_basis='estimated from Finance Broker tier ranges (tiers 1 to 23)')
+    if stable != other:
+        add('LT', f'Motor Loan, estimated score {lo}+, stable profile',
+            'Stable = buying, owning or renting; full or part time; 6+ months in job.',
+            residential='buying,owning,renting', employment='full_time,part_time', job_months_min=6, rate=stable, **lat)
+    add('LT', f'Motor Loan, estimated score {lo}+', 'Any profile.', rate=other, **lat)
+
+# Angle: card rates (by vehicle age and home ownership) assumed for scores 700+, loaded below that.
+for r in [x for x in out if x['id'].startswith('AN-') and x['status_note']]:
+    for lo, hi, load in [(700, '', 0), (600, 699, 1.5), (500, 599, 3.0)]:
+        e = {k: r.get(k, '') for k in MASTER}
+        add('AN', f"{r['product']}, estimated score {lo}+",
+            f'Card rate {r["rate"]}% plus {load}% estimated loading for this score band.',
+            **{k: e[k] for k in ('lender', 'condition', 'vehicle_age_min', 'vehicle_age_max', 'residential')},
+            credit_score_min=lo, credit_score_max=hi, rate=round(float(r['rate']) + load, 2),
+            rate_basis='card rate with estimated score loading')
 
 os.makedirs(os.path.join(ROOT, 'private'), exist_ok=True)
 with open(os.path.join(ROOT, 'private', 'rates-master.csv'), 'w', newline='', encoding='utf-8-sig') as f:
