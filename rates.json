@@ -5,8 +5,7 @@
   "settings": {
     "showRate": false,
     "maxTermMonths": 84,
-    "residualMaxPct": 30,
-    "residualMaxTermMonths": 60,
+    "residualMaxPct": 40,
     "residualBase": "price",
     "nonAssetBackedMinDepositPct": 20,
     "consumerFreqs": "weekly,fortnightly,monthly",
@@ -14,6 +13,15 @@
     "consumerInAdvance": false,
     "commercialInAdvance": false
   },
+  "balloons": [
+    { "condition": "new",  "used_age_min": "", "used_age_max": "", "12": 0, "24": 0, "36": 40, "48": 35, "60": 40, "72": 25, "84": 25 },
+    { "condition": "used", "used_age_min": 0,  "used_age_max": 3,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 20, "72": 15, "84": 15 },
+    { "condition": "used", "used_age_min": 4,  "used_age_max": 4,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 20, "72": 15, "84": 0 },
+    { "condition": "used", "used_age_min": 5,  "used_age_max": 5,  "12": 0, "24": 0, "36": 30, "48": 25, "60": 20, "72": 0,  "84": 0 },
+    { "condition": "used", "used_age_min": 6,  "used_age_max": 6,  "12": 0, "24": 0, "36": 20, "48": 10, "60": 0,  "72": 0,  "84": 0 },
+    { "condition": "used", "used_age_min": 7,  "used_age_max": 7,  "12": 0, "24": 0, "36": 20, "48": 0,  "60": 0,  "72": 0,  "84": 0 },
+    { "condition": "used", "used_age_min": 8,  "used_age_max": "", "12": 0, "24": 0, "36": 0,  "48": 0,  "60": 0,  "72": 0,  "84": 0 }
+  ],
   "tiers": [
     { "id": "C-A1", "active": "Y", "loan_type": "consumer", "tier": "Prime, newer vehicle",
       "vehicle_age_min": 0, "vehicle_age_max": 3, "age_at_end_max": 15,
@@ -43,7 +51,7 @@
       "vehicle_age_min": 0, "vehicle_age_max": 5, "age_at_end_max": 15,
       "asset_backed": "Y", "gst_registered": "", "comparable_credit": "", "abn_months_min": 24,
       "rate": 7.49, "est_fee": 495, "monthly_fee": 4.95, "brokerage_pct": 3,
-      "min_loan": 10000, "max_loan": 250000, "max_term_months": 84, "max_residual_pct": 30 },
+      "min_loan": 10000, "max_loan": 250000, "max_term_months": 84, "max_residual_pct": 40 },
 
     { "id": "B-A2", "active": "Y", "loan_type": "commercial", "tier": "Asset backed, 6 to 12 years",
       "vehicle_age_min": 6, "vehicle_age_max": 12, "age_at_end_max": 20,

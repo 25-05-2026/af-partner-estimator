@@ -222,6 +222,13 @@
         <!-- 1. Vehicle -->
         <section class="card" aria-labelledby="h1v">
           <div class="sec-h"><span class="n">1</span><h2 id="h1v">The vehicle</h2></div>
+          <div class="field" data-req="condition">
+            <span class="label" id="lblCond">New or used?</span>
+            <div class="seg" role="group" aria-labelledby="lblCond" data-key="condition">
+              <button type="button" data-val="new">New</button>
+              <button type="button" data-val="used">Used or demo</button>
+            </div>
+          </div>
           <div class="field" id="fYear">
             <label class="label" for="year">Year of manufacture</label>
             <select id="year"></select>
@@ -357,7 +364,7 @@
           <div class="field" id="residField" hidden>
             <label class="label" for="resid">Residual (balloon)</label>
             <div class="resid">
-              <input type="range" id="resid" min="0" max="30" step="1" value="0">
+              <input type="range" id="resid" min="0" max="0" step="1" value="0">
               <output id="residOut" for="resid">0%</output>
             </div>
             <div class="hint" id="residHint"></div>
@@ -430,6 +437,19 @@ const REQUIRED = {
 };
 const THIS_YEAR = new Date().getFullYear();
 
+/* Maximum balloon % by vehicle condition, age and term (commercial only).
+   Used when the rate card has no balloons table. A term with no figure means no balloon.
+   From the commercial lender chart, plus a 40% balloon on new vehicles over 60 months. */
+const DEFAULT_BALLOONS = [
+  { condition: 'new',  used_age_min: '', used_age_max: '', 36: 40, 48: 35, 60: 40, 72: 25, 84: 25 },
+  { condition: 'used', used_age_min: 0,  used_age_max: 3,  36: 30, 48: 25, 60: 20, 72: 15, 84: 15 },
+  { condition: 'used', used_age_min: 4,  used_age_max: 4,  36: 30, 48: 25, 60: 20, 72: 15, 84: 0 },
+  { condition: 'used', used_age_min: 5,  used_age_max: 5,  36: 30, 48: 25, 60: 20, 72: 0,  84: 0 },
+  { condition: 'used', used_age_min: 6,  used_age_max: 6,  36: 20, 48: 10, 60: 0,  72: 0,  84: 0 },
+  { condition: 'used', used_age_min: 7,  used_age_max: 7,  36: 20, 48: 0,  60: 0,  72: 0,  84: 0 },
+  { condition: 'used', used_age_min: 8,  used_age_max: '', 36: 0,  48: 0,  60: 0,  72: 0,  84: 0 }
+];
+
 const $ = id => document.getElementById(id);
 const money = (n, dp = 2) => '$' + n.toLocaleString('en-AU', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const parseMoney = s => { const n = parseFloat(String(s).replace(/[^0-9.]/g, '')); return isFinite(n) ? n : 0; };
@@ -442,7 +462,7 @@ const store = {
 let RATES = { settings: {}, tiers: [] };
 const S = () => RATES.settings;
 const state = {
-  loanType: 'consumer', year: '', term: 60, freq: 'monthly', residualPct: 0,
+  loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0,
   residential: '', employment: '', jobMonths: '',
   assetBacked: '', gst: '', compCredit: '', abnMonths: ''
 };
@@ -459,8 +479,7 @@ function normaliseRates(raw) {
   const settings = {
     showRate: yn(st.showRate) === true,
     maxTermMonths: num(st.maxTermMonths) ?? 84,
-    residualMaxPct: num(st.residualMaxPct) ?? 30,
-    residualMaxTermMonths: num(st.residualMaxTermMonths) ?? 60,
+    residualMaxPct: num(st.residualMaxPct) ?? 40,   // hard cap on top of the balloons table
     residualBase: norm(st.residualBase) === 'naf' ? 'naf' : 'price',
     nonAssetBackedMinDepositPct: num(st.nonAssetBackedMinDepositPct) ?? 20,
     freqs: {
@@ -471,7 +490,7 @@ function normaliseRates(raw) {
   };
   const tiers = (raw.tiers || []).filter(t => yn(t.active) !== false && num(t.rate) !== null).map(t => ({
     id: String(t.id || ''), lender: String(t.lender || ''), tier: String(t.tier || ''),
-    loanType: norm(t.loan_type),
+    loanType: norm(t.loan_type), condition: list(t.condition),
     ageMin: num(t.vehicle_age_min), ageMax: num(t.vehicle_age_max), ageEndMax: num(t.age_at_end_max),
     residential: list(t.residential), employment: list(t.employment), jobMonthsMin: num(t.job_months_min),
     assetBacked: yn(t.asset_backed), gst: yn(t.gst_registered), compCredit: yn(t.comparable_credit), abnMonthsMin: num(t.abn_months_min),
@@ -479,7 +498,12 @@ function normaliseRates(raw) {
     rate: num(t.rate), estFee: num(t.est_fee) ?? 0, monthlyFee: num(t.monthly_fee) ?? 0, brokeragePct: num(t.brokerage_pct) ?? 0,
     minLoan: num(t.min_loan), maxLoan: num(t.max_loan), maxTerm: num(t.max_term_months), maxResidualPct: num(t.max_residual_pct)
   }));
-  return { version: String(raw.version || ''), updated: String(raw.updated || ''), sample: yn(raw.sample) === true, settings, tiers };
+  const src = Array.isArray(raw.balloons) && raw.balloons.length ? raw.balloons : DEFAULT_BALLOONS;
+  const balloons = src.map(b => ({
+    condition: norm(b.condition), ageMin: num(b.used_age_min), ageMax: num(b.used_age_max),
+    byTerm: Object.fromEntries(TERMS.map(m => [m, num(b[m]) ?? num(b[String(m)]) ?? 0]))
+  }));
+  return { version: String(raw.version || ''), updated: String(raw.updated || ''), sample: yn(raw.sample) === true, settings, tiers, balloons };
 }
 
 async function loadRates() {
@@ -510,10 +534,20 @@ function repayment(P, ratePct, months, perYear, residual, inAdvance) {
 }
 
 function vehicleAge() { return state.year === '' ? null : Math.max(0, THIS_YEAR - +state.year); }
-function residualAllowed(term) { return state.loanType === 'commercial' && term <= S().residualMaxTermMonths; }
+// Largest balloon % allowed for this term. Commercial only; consumer is always 0.
+function balloonLimit(term) {
+  if (state.loanType !== 'commercial' || !state.condition || state.year === '') return 0;
+  const age = vehicleAge();
+  const row = (RATES.balloons || []).find(b => b.condition === state.condition &&
+    (state.condition === 'new' || ((b.ageMin === null || age >= b.ageMin) && (b.ageMax === null || age <= b.ageMax))));
+  return row ? Math.max(0, Math.min(row.byTerm[term] || 0, S().residualMaxPct)) : 0;
+}
+// Balloon actually used for a term: the chosen % capped at that term's limit.
+function residualFor(term) { return Math.min(state.residualPct, balloonLimit(term)); }
 
 function tierMatches(t, c) {
   if (t.loanType !== c.loanType) return false;
+  if (t.condition.length && !t.condition.includes(c.condition)) return false;
   if (t.ageMin !== null && c.age < t.ageMin) return false;
   if (t.ageMax !== null && c.age > t.ageMax) return false;
   if (t.ageEndMax !== null && c.age + c.term / 12 > t.ageEndMax) return false;
@@ -540,10 +574,11 @@ function calc(term) {
   const deposit = parseMoney($('deposit').value);
   const financed = price - deposit;
   const depositPct = price > 0 ? deposit / price * 100 : 0;
-  const residualPct = residualAllowed(term) ? state.residualPct : 0;
+  const residualPct = residualFor(term);
   const out = { status: 'ok', price, deposit, financed, depositPct, residualPct, term, freq: FREQ[state.freq] };
 
   const missing = [];
+  if (state.condition === '') missing.push('New or used');
   if (state.year === '') missing.push('Year of manufacture');
   REQUIRED[state.loanType].forEach(([k, l]) => { if (state[k] === '') missing.push(l); });
   if (price <= 0) missing.push('Vehicle price');
@@ -556,7 +591,7 @@ function calc(term) {
   }
 
   const ctx = {
-    loanType: state.loanType, age: vehicleAge(), term, financed, depositPct, residualPct,
+    loanType: state.loanType, condition: state.condition, age: vehicleAge(), term, financed, depositPct, residualPct,
     residential: state.residential, employment: state.employment, jobMonths: +state.jobMonths,
     assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths
   };
@@ -627,15 +662,17 @@ function render() {
   $('ageHint').classList.toggle('strong', age !== null);
 
   // Residual
-  const canResid = residualAllowed(state.term);
+  const limit = balloonLimit(state.term);
+  const vehDesc = state.condition === 'new' ? 'a new vehicle' : `a ${age} year old used vehicle`;
   $('residField').hidden = !isCom;
-  $('resid').disabled = !canResid;
-  $('resid').max = S().residualMaxPct;
-  if (state.residualPct > S().residualMaxPct) state.residualPct = S().residualMaxPct;
-  $('resid').value = canResid ? state.residualPct : 0;
-  $('residHint').textContent = canResid
-    ? `Commercial loans only, up to ${S().residualMaxPct}% on terms up to ${S().residualMaxTermMonths} months.`
-    : `Residuals are only available on terms up to ${S().residualMaxTermMonths} months.`;
+  $('resid').disabled = limit === 0;
+  $('resid').max = limit;
+  $('resid').value = residualFor(state.term);
+  $('residHint').textContent =
+    !state.condition || state.year === '' ? 'Choose new or used and the year to see the maximum balloon.'
+    : limit === 0 ? `No balloon is available for ${vehDesc} on a ${state.term} month term.`
+    : `Maximum balloon for ${vehDesc} on a ${state.term} month term is ${limit}%.` +
+      (state.residualPct > limit ? ` Your ${state.residualPct}% has been reduced to ${limit}% for this term.` : '');
 
   // Deposit hint
   const minDep = S().nonAssetBackedMinDepositPct;
@@ -695,6 +732,7 @@ function render() {
     const showNa = x.status === 'nomatch';
     b.innerHTML = `<div class="yr">${m} mths</div>
       <div class="amt${has ? '' : ' na'}">${has ? money(x.amount, 0) : (showNa ? 'Refer' : '&nbsp;')}</div>
+      ${has && x.residualPct > 0 ? `<div class="yr" style="margin-top:2px">${x.residualPct}% balloon</div>` : ''}
       <div class="fill"><i style="width:${has ? Math.max(8, x.amount / max * 100) : 0}%"></i></div>`;
     b.addEventListener('click', () => { state.term = m; render(); });
     bars.appendChild(b);
@@ -702,6 +740,7 @@ function render() {
 
   const stamp = RATES.updated ? `Rates updated ${new Date(RATES.updated).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : '';
   $('ratesStamp').textContent = (stamp + (RATES.offline ? ' (offline copy)' : '')).trim() + (stamp ? '.' : '');
+  updateResidOut();
 }
 let touched = false;
 
@@ -785,7 +824,8 @@ function buildPayload(ref, action) {
     client_name: `${client().first} ${client().last}`.trim(), client_first_name: client().first, client_last_name: client().last,
     client_mobile: client().mobile, client_email: client().email, client_consent: client().consent ? 'Yes' : 'No',
     loan_type: LABELS.loanType[state.loanType],
-    vehicle_year: state.year, vehicle_age_years: vehicleAge(),
+    vehicle_condition: state.condition === 'new' ? 'New' : state.condition === 'used' ? 'Used or demo' : '',
+    vehicle_year: state.year, vehicle_age_years: vehicleAge(), balloon_max_pct: balloonLimit(state.term),
     residential_status: isCom ? '' : LABELS.residential[state.residential] || '',
     employment_status: isCom ? '' : LABELS.employment[state.employment] || '',
     job_time: isCom ? '' : $('jobMonths').selectedOptions[0].text,
@@ -839,6 +879,7 @@ document.querySelectorAll('.seg[data-key] button').forEach(b => b.addEventListen
   const key = b.parentElement.dataset.key;
   state[key] = b.dataset.val; touched = true;
   if (key === 'loanType' && b.dataset.val === 'consumer') state.residualPct = 0;
+  if (key === 'condition' && b.dataset.val === 'new' && state.year === '') { state.year = String(THIS_YEAR); $('year').value = state.year; }
   render();
 }));
 $('year').addEventListener('change', e => { state.year = e.target.value; touched = true; render(); });
@@ -867,7 +908,7 @@ $('printBtn').addEventListener('click', async () => {
   window.print();
 });
 $('resetBtn').addEventListener('click', () => {
-  Object.assign(state, { loanType: 'consumer', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
+  Object.assign(state, { loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths'].forEach(id => $(id).value = '');
   $('price').value = '45,000'; $('deposit').value = '0'; ['cFirst','cLast','cPhone','cEmail'].forEach(id => { $(id).value = ''; $(id).style.borderColor = ''; });
   $('cConsent').checked = false; $('clientErr').hidden = true; clientChecked = false;

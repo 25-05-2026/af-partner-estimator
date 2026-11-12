@@ -1,7 +1,7 @@
 # AF Partner Estimator: setup
 
 Referral partner vehicle finance repayment estimator. Consumer and commercial, 12 to 84 month terms,
-commercial residuals up to 30% on terms up to 60 months.
+commercial only balloons limited by the Balloons table (vehicle new or used, age and term). Consumer loans never show a balloon.
 
 ## Files
 
@@ -17,7 +17,7 @@ commercial residuals up to 30% on terms up to 60 months.
 1. Create a Google Sheet, e.g. **AF Partner Estimator**.
 2. Extensions > Apps Script. Paste in `apps-script/Code.gs` and save.
 3. Pick `setup` in the function list and click **Run**. Approve the permissions. This creates the
-   **Rates**, **Settings** and **Quotes** tabs with sample rows.
+   **Rates**, **Balloons**, **Settings** and **Quotes** tabs with sample rows.
 4. Deploy > New deployment > type **Web app**. Execute as **Me**, Who has access **Anyone**. Copy the URL.
 5. In `index.html`, set `CONFIG.apiUrl` to that URL. Publish.
 
@@ -48,8 +48,18 @@ they are recorded in the Quotes tab.
 | `brokerage_pct` | Brokerage % of amount financed, added to the loan |
 | `min_loan` / `max_loan` | Applies to vehicle price less deposit |
 | `max_term_months` | Longest term for this tier |
-| `max_residual_pct` | Largest residual for this tier (global cap 30%) |
+| `condition` | `new`, `used` or blank |
+| `max_residual_pct` | Largest residual for this tier, on top of the Balloons table |
 | `active` | `N` hides the row |
+
+## Balloon limits (commercial only)
+
+The **Balloons** tab sets the maximum balloon % for each vehicle and term. One row for new vehicles,
+then one row per used age band (`used_age_min` to `used_age_max` years, blank max = and older), with a
+column per term in months (12 to 84). A blank or 0 means no balloon. It ships with the commercial
+lender chart plus 40% on new vehicles over 60 months. `residualMaxPct` in Settings is an extra hard
+cap (40%). If the partner's chosen balloon is above the limit for a term, it is reduced to the limit
+for that term and the page says so.
 
 ## Quote capture
 

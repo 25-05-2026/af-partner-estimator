@@ -3,7 +3,8 @@
  *
  * One Google Sheet with three tabs:
  *   Rates     one row per lender tier. The calculator picks the cheapest tier the client qualifies for.
- *   Settings  key | value pairs (residual limits, frequencies, showRate, notify email, capture key).
+ *   Balloons  maximum balloon % by new/used, vehicle age and term (commercial only).
+ *   Settings  key | value pairs (residual cap, frequencies, showRate, notify email, capture key).
  *   Quotes    every saved or printed estimate lands here. New columns are added automatically.
  *
  * GET  <web app url>?action=rates   returns the live rate card as JSON.
@@ -15,9 +16,10 @@
 const TAB_RATES = 'Rates';
 const TAB_SETTINGS = 'Settings';
 const TAB_QUOTES = 'Quotes';
+const TAB_BALLOONS = 'Balloons';
 
 const RATE_HEADERS = [
-  'id', 'active', 'lender', 'loan_type', 'tier',
+  'id', 'active', 'lender', 'loan_type', 'tier', 'condition',
   'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
   'residential', 'employment', 'job_months_min',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min',
@@ -27,7 +29,7 @@ const RATE_HEADERS = [
 
 const QUOTE_HEADERS = [
   'received', 'quote_ref', 'action', 'created', 'referrer_name', 'referrer_business', 'referrer_code',
-  'client_name', 'client_first_name', 'client_last_name', 'client_mobile', 'client_email', 'client_consent', 'loan_type', 'vehicle_year', 'vehicle_age_years',
+  'client_name', 'client_first_name', 'client_last_name', 'client_mobile', 'client_email', 'client_consent', 'loan_type', 'vehicle_condition', 'vehicle_year', 'vehicle_age_years', 'balloon_max_pct',
   'residential_status', 'employment_status', 'job_time',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
@@ -118,12 +120,12 @@ function buildEmail_(d) {
       ['Time in job', v(d.job_time)]
     ])],
     ['Vehicle and loan', [
-      ['Vehicle', v(d.vehicle_year) ? `${d.vehicle_year} (${d.vehicle_age_years} years old)` : ''],
+      ['Vehicle', v(d.vehicle_year) ? `${v(d.vehicle_condition) ? d.vehicle_condition + ', ' : ''}${d.vehicle_year} (${d.vehicle_age_years} years old)` : ''],
       ['Vehicle price', money(d.vehicle_price)],
       ['Deposit or trade in', money(d.deposit)],
       ['Amount financed', money(d.amount_financed)],
       ['Term', v(d.term_months) ? `${d.term_months} months` : ''],
-      ['Residual', +d.residual_pct ? `${money(d.residual_amount)} (${d.residual_pct}%)` : '']
+      ['Residual', +d.residual_pct ? `${money(d.residual_amount)} (${d.residual_pct}%, max ${d.balloon_max_pct}%)` : '']
     ]],
     ['Estimate shown to partner', [
       ['Result', v(d.result)],
@@ -205,7 +207,17 @@ function getRateCard_() {
   delete publicSettings.notify_email;
   const updated = settings.updated instanceof Date ? Utilities.formatDate(settings.updated, 'Australia/Sydney', 'yyyy-MM-dd') : String(settings.updated || '');
 
-  return { version: String(settings.version || updated), updated: updated, sample: false, settings: publicSettings, tiers: tiers };
+  return { version: String(settings.version || updated), updated: updated, sample: false, settings: publicSettings, tiers: tiers, balloons: readTable_(TAB_BALLOONS) };
+}
+
+function readTable_(name) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const values = sh.getDataRange().getValues();
+  const headers = values.shift().map(h => String(h).trim());
+  return values.filter(r => r.some(c => c !== '')).map(r => {
+    const o = {}; headers.forEach((h, i) => { if (h) o[h] = r[i]; }); return o;
+  });
 }
 
 function readSettings_() {
@@ -218,7 +230,7 @@ function readSettings_() {
 
 /** Stamp Settings > updated whenever the Rates tab is edited, so partners see when rates last changed. */
 function onEdit(e) {
-  if (!e || e.range.getSheet().getName() !== TAB_RATES) return;
+  if (!e || [TAB_RATES, TAB_BALLOONS].indexOf(e.range.getSheet().getName()) === -1) return;
   const sh = sheet_(TAB_SETTINGS);
   const rows = sh.getRange(2, 1, Math.max(sh.getLastRow() - 1, 1), 1).getValues();
   for (let i = 0; i < rows.length; i++) {
@@ -237,14 +249,13 @@ function setup() {
 
   const settings = sheet_(TAB_SETTINGS);
   if (settings.getLastRow() === 0) {
-    settings.getRange(1, 1, 14, 3).setValues([
+    settings.getRange(1, 1, 13, 3).setValues([
       ['key', 'value', 'what it does'],
       ['updated', Utilities.formatDate(new Date(), 'Australia/Sydney', 'yyyy-MM-dd'), 'Set automatically when the Rates tab is edited'],
       ['version', '', 'Optional label, e.g. Nov 2026 rate card'],
       ['showRate', 'N', 'Y shows the indicative interest rate to partners. Lender names are never shown.'],
       ['maxTermMonths', 84, 'Longest term offered'],
-      ['residualMaxPct', 30, 'Largest residual allowed (commercial only)'],
-      ['residualMaxTermMonths', 60, 'Residuals only on terms up to this many months'],
+      ['residualMaxPct', 40, 'Hard cap on any balloon. The Balloons tab sets the limit by vehicle and term.'],
       ['residualBase', 'price', 'price = residual is a % of vehicle price, naf = % of total amount financed'],
       ['nonAssetBackedMinDepositPct', 20, 'Minimum deposit for non asset backed commercial clients'],
       ['consumerFreqs', 'weekly,fortnightly,monthly', 'Frequencies offered to consumer clients'],
@@ -261,14 +272,32 @@ function setup() {
   const rates = sheet_(TAB_RATES);
   if (rates.getLastRow() === 0) {
     const sample = [
-      ['C-A1','Y','Sample Lender A','consumer','Prime, newer vehicle',0,3,15,'buying,owning,renting','full_time,part_time',6,'','','','','',8.49,995,8,0,5000,150000,84,'','Sample only'],
-      ['C-B1','Y','Sample Lender B','consumer','Older vehicle',8,15,20,'buying,owning,renting','full_time,part_time',6,'','','','','',11.49,1195,10,0,5000,80000,72,'','Sample only'],
-      ['B-A1','Y','Sample Lender D','commercial','Asset backed, newer vehicle',0,5,15,'','','','Y','','',24,'',7.49,495,4.95,3,10000,250000,84,30,'Sample only'],
-      ['B-B1','Y','Sample Lender E','commercial','Non asset backed',0,10,15,'','','','','Y','Y',24,'',9.49,595,4.95,3,10000,150000,60,30,'Sample only']
+      ['C-A1','Y','Sample Lender A','consumer','Prime, newer vehicle','',0,3,15,'buying,owning,renting','full_time,part_time',6,'','','','','',8.49,995,8,0,5000,150000,84,'','Sample only'],
+      ['C-B1','Y','Sample Lender B','consumer','Older vehicle','',8,15,20,'buying,owning,renting','full_time,part_time',6,'','','','','',11.49,1195,10,0,5000,80000,72,'','Sample only'],
+      ['B-A1','Y','Sample Lender D','commercial','Asset backed, newer vehicle','',0,5,15,'','','','Y','','',24,'',7.49,495,4.95,3,10000,250000,84,40,'Sample only'],
+      ['B-B1','Y','Sample Lender E','commercial','Non asset backed','',0,10,15,'','','','','Y','Y',24,'',9.49,595,4.95,3,10000,150000,60,30,'Sample only']
     ];
     rates.getRange(1, 1, 1, RATE_HEADERS.length).setValues([RATE_HEADERS]).setFontWeight('bold');
     rates.getRange(2, 1, sample.length, RATE_HEADERS.length).setValues(sample);
     rates.setFrozenRows(1);
+  }
+
+  const balloons = sheet_(TAB_BALLOONS);
+  if (balloons.getLastRow() === 0) {
+    const bal = [
+      ['condition', 'used_age_min', 'used_age_max', 12, 24, 36, 48, 60, 72, 84],
+      ['new', '', '', 0, 0, 40, 35, 40, 25, 25],
+      ['used', 0, 3, 0, 0, 30, 25, 20, 15, 15],
+      ['used', 4, 4, 0, 0, 30, 25, 20, 15, 0],
+      ['used', 5, 5, 0, 0, 30, 25, 20, 0, 0],
+      ['used', 6, 6, 0, 0, 20, 10, 0, 0, 0],
+      ['used', 7, 7, 0, 0, 20, 0, 0, 0, 0],
+      ['used', 8, '', 0, 0, 0, 0, 0, 0, 0]
+    ];
+    balloons.getRange(1, 1, bal.length, bal[0].length).setValues(bal);
+    balloons.getRange(1, 1, 1, bal[0].length).setFontWeight('bold');
+    balloons.setFrozenRows(1);
+    balloons.getRange(bal.length + 2, 1).setValue('Max balloon % by term in months. Commercial only. used_age_max blank = and older. New vehicles 60 months set to 40% (lender exception).');
   }
 
   const quotes = sheet_(TAB_QUOTES);
