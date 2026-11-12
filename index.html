@@ -659,7 +659,7 @@ function calc(term) {
   const minDep = S().nonAssetBackedMinDepositPct;
   if (state.loanType === 'commercial' && state.assetBacked === 'no' &&
       (state.comLiving === 'boarding' || (state.comLiving === 'renting' && state.compCredit !== 'yes' && depositPct + 1e-9 < minDep))) {
-    out.warning = `Likely requirement for this profile: full financials, or a ${minDep}% deposit and bank statements showing trading.`;
+    out.warning = `Likely requirement for this profile: full financials, or a ${minDep}% deposit and bank statements showing trading income.`;
   }
 
   const ctx = {
