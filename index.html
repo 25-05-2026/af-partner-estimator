@@ -156,6 +156,9 @@
   .gate .terms-box p{margin:0 0 10px} .gate .terms-box p:last-child{margin:0}
   .gate .btn{box-shadow:none}
 
+  .btn.pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 8px 20px rgba(141,198,63,.36)} 50%{box-shadow:0 0 0 8px rgba(141,198,63,.25)}}
+  @media (prefers-reduced-motion:reduce){.btn.pulse{animation:none}}
   .print-only{display:none}
   @media print{
     body{background:#fff}
@@ -214,6 +217,20 @@
     </div>
     <div class="msg err" id="gErr" hidden></div>
     <button type="button" class="btn block" id="gGo">Continue to calculator</button>
+  </div>
+</div>
+
+<!-- ===== Refer pop up: shown when a scenario sits outside the calculator's parameters ===== -->
+<div class="gate" id="referPop" role="dialog" aria-modal="true" aria-labelledby="referTitle" hidden>
+  <div class="panel" style="max-width:480px">
+    <div class="eyebrow">Refer to our office</div>
+    <h2 id="referTitle">We'll assess this one for you</h2>
+    <p style="margin:0 0 12px">This scenario sits outside the standard parameters of this calculator, so it needs to be referred into our office for assessment. Our team works with a wide panel of lenders and will look at the options for your client.</p>
+    <p class="hint" id="referReason" style="margin:0 0 18px"></p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+      <button type="button" class="btn" id="referSubmit">Submit for assessment</button>
+      <button type="button" class="btn" id="referClose" style="background:#fff; color:var(--ink); border:1.5px solid var(--line)">Keep editing</button>
+    </div>
   </div>
 </div>
 
@@ -627,7 +644,7 @@ function calc(term) {
   const out = { status: 'ok', price, deposit, financed, depositPct, residualPct, term, freq: FREQ[state.freq] };
 
   if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === 'boarding') {
-    return Object.assign(out, { status: 'error', message: 'Commercial loans are not available to clients who are boarding. Submit the estimate and our team will look at the options.' });
+    return Object.assign(out, { status: 'refer', reason: 'Commercial loan for a client who is boarding' });
   }
 
   const missing = [];
@@ -639,10 +656,10 @@ function calc(term) {
   if (price <= 0) missing.push('Vehicle price');
   if (missing.length) return Object.assign(out, { status: 'incomplete', missing });
 
-  if (deposit >= price) return Object.assign(out, { status: 'error', message: 'The deposit must be less than the vehicle price.' });
+  if (deposit >= price) return Object.assign(out, { status: 'error', message: 'Check the deposit: it should be less than the vehicle price.' });
   const minDep = S().nonAssetBackedMinDepositPct;
   if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === 'renting' && state.compCredit !== 'yes' && depositPct + 1e-9 < minDep) {
-    return Object.assign(out, { status: 'error', message: `Renters without comparable credit need a deposit of at least ${minDep}% (${money(Math.ceil(price * minDep / 100), 0)}).` });
+    return Object.assign(out, { status: 'refer', reason: `Renter without comparable credit and less than a ${minDep}% deposit (${money(Math.ceil(price * minDep / 100), 0)})` });
   }
 
   const ctx = {
@@ -662,7 +679,7 @@ function calc(term) {
     const amount = repayment(naf, t.rate, term, f.perYear, residual, inAdv);
     if (!best || amount < best.amount) best = { tier: t, brokerage, naf, residual, amount };
   });
-  if (!best) return Object.assign(out, { status: 'nomatch' });
+  if (!best) return Object.assign(out, { status: 'refer', reason: 'Outside the lender parameters in this calculator' });
   return Object.assign(out, best, { count: Math.round(term / 12 * f.perYear) });
 }
 
@@ -728,7 +745,7 @@ function render() {
   $('resid').value = residualFor(state.term);
   $('residHint').textContent =
     !state.condition || state.year === '' ? 'Choose new or used and the year to see the maximum balloon.'
-    : limit === 0 ? `No balloon is available for ${vehDesc} on a ${state.term} month term.`
+    : limit === 0 ? `For a balloon on ${vehDesc} over ${state.term} months, refer the client into our office for assessment.`
     : `Maximum balloon for ${vehDesc} on a ${state.term} month term is ${limit}%.` +
       (state.residualPct > limit ? ` Your ${state.residualPct}% has been reduced to ${limit}% for this term.` : '');
 
@@ -748,10 +765,10 @@ function render() {
   $('resScore').textContent = `Credit score unknown: this estimate assumes the client's comprehensive credit score is above ${S().unknownCreditScore} when the application is submitted to the lender.`;
   $('resOk').hidden = !ok;
   $('resEyebrow').textContent = `Estimated ${FREQ[state.freq].label.toLowerCase()} repayment`;
-  $('resInfo').hidden = !(r.status === 'incomplete' || r.status === 'nomatch');
+  $('resInfo').hidden = !(r.status === 'incomplete' || r.status === 'refer');
   $('resErr').hidden = r.status !== 'error';
   if (r.status === 'incomplete') $('resInfo').innerHTML = 'Answer these to see an estimate:<ul>' + r.missing.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>';
-  if (r.status === 'nomatch') $('resInfo').innerHTML = 'We can\'t show an indicative repayment for this scenario. Submit the estimate and our team will look at the options.';
+  if (r.status === 'refer') $('resInfo').innerHTML = '<strong>Refer to our office for assessment.</strong> Submit the estimate and our team will assess it and come back with options.<br><span style="font-weight:500">' + esc(r.reason) + '.</span>';
   if (r.status === 'error') $('resErr').textContent = r.message;
 
   if (ok) {
@@ -769,8 +786,10 @@ function render() {
   }
   $('resRows').innerHTML = rows.map(([k, v]) => `<div class="row"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
 
-  const savable = r.status === 'ok' || r.status === 'nomatch' || (r.status === 'error' && state.comLiving === 'boarding' && state.loanType === 'commercial');
+  const savable = r.status === 'ok' || r.status === 'refer';
+  scheduleReferPopup(r);
   $('saveBtn').disabled = !savable;
+  $('saveBtn').classList.toggle('pulse', r.status === 'refer' && !(lastSaved && lastSaved.sig === signature()));
   $('printBtn').disabled = !ok;
   const sig = signature();
   $('savedMsg').hidden = !(lastSaved && lastSaved.sig === sig);
@@ -787,7 +806,7 @@ function render() {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'bar'; b.setAttribute('aria-pressed', m === state.term);
     const has = x.status === 'ok';
-    const showNa = x.status === 'nomatch';
+    const showNa = x.status === 'refer';
     b.innerHTML = `<div class="yr">${m} mths</div>
       <div class="amt${has ? '' : ' na'}">${has ? money(x.amount, 0) : (showNa ? 'Refer' : '&nbsp;')}</div>
       ${has && x.residualPct > 0 ? `<div class="yr" style="margin-top:2px">${x.residualPct}% balloon</div>` : ''}
@@ -801,6 +820,26 @@ function render() {
   updateResidOut();
 }
 let touched = false;
+
+/* ---------- Refer pop up ----------
+   Shown once per scenario, after the inputs have settled, so it never pops up mid typing. */
+let referTimer = null, referShownFor = '';
+function scenarioSig() { return JSON.stringify([state, $('price').value, $('deposit').value]); }
+function scheduleReferPopup(r) {
+  clearTimeout(referTimer);
+  if (r.status !== 'refer') return;
+  const sig = scenarioSig();
+  if (sig === referShownFor) return;
+  referTimer = setTimeout(() => {
+    if (!$('gate').hidden || calc(state.term).status !== 'refer' || scenarioSig() !== sig) return;
+    referShownFor = sig;
+    $('referReason').textContent = 'Reason: ' + calc(state.term).reason + '.';
+    $('referPop').hidden = false;
+    $('referSubmit').focus();
+  }, 1200);
+}
+$('referClose').addEventListener('click', () => { $('referPop').hidden = true; });
+$('referSubmit').addEventListener('click', () => { $('referPop').hidden = true; $('saveBtn').click(); });
 
 /* ---------- Referrer ---------- */
 const params = new URLSearchParams(location.search);
@@ -912,7 +951,8 @@ function buildPayload(ref, action) {
     vehicle_price: r.price, deposit: r.deposit, amount_financed: r.financed,
     term_months: state.term, frequency: FREQ[state.freq].label,
     residual_pct: r.residualPct, residual_amount: r.residual || 0,
-    result: r.status === 'ok' ? 'Estimate shown' : 'No indicative match',
+    result: r.status === 'ok' ? 'Estimate shown' : 'Referred to office for assessment',
+    refer_reason: r.status === 'refer' ? r.reason : '',
     repayment: r.status === 'ok' ? Math.round(r.amount * 100) / 100 : '',
     indicative_rate: r.tier ? r.tier.rate : '',
     credit_score: $('creditScore').selectedOptions[0].text, credit_score_used: state.creditScore === '' ? '' : scoreValue(),

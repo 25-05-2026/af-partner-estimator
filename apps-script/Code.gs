@@ -39,7 +39,7 @@ const QUOTE_HEADERS = [
   'residential_status', 'employment_status', 'job_time',
   'asset_backed', 'living_situation', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
-  'credit_score', 'credit_score_used', 'result', 'repayment', 'indicative_rate', 'est_fee', 'origination_fee', 'brokerage_pct', 'brokerage', 'naf',
+  'credit_score', 'credit_score_used', 'result', 'refer_reason', 'repayment', 'indicative_rate', 'est_fee', 'origination_fee', 'brokerage_pct', 'brokerage', 'naf',
   'matched_tier', 'matched_lender', 'rates_version', 'rates_updated', 'disclaimer_ack', 'page', 'user_agent'
 ];
 
@@ -138,6 +138,7 @@ function buildEmail_(d) {
     ]],
     ['Estimate shown to partner', [
       ['Result', v(d.result)],
+      ['Refer reason', v(d.refer_reason)],
       ['Repayment', d.repayment !== '' && d.repayment !== undefined ? `${money(d.repayment)} ${freq}` : ''],
       ['Indicative rate', v(d.indicative_rate) ? `${d.indicative_rate}% p.a.` : ''],
       ['Lender tier', [v(d.matched_lender), v(d.matched_tier)].filter(Boolean).join(', ')],
@@ -149,7 +150,7 @@ function buildEmail_(d) {
 
   const headline = d.repayment !== '' && d.repayment !== undefined
     ? `${money(d.repayment)} ${freq} over ${d.term_months} months`
-    : 'No indicative match, needs a manual look';
+    : 'Referred to office for assessment';
 
   const rowsHtml = rows => rows.filter(r => r[1] !== '').map(([k, val, href]) =>
     `<tr><td style="padding:6px 0;color:#6B7280;width:46%;vertical-align:top">${esc(k)}</td>` +
