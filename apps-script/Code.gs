@@ -23,19 +23,19 @@ const RATE_HEADERS = [
   'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max', 'credit_score_min', 'credit_score_max',
   'residential', 'employment', 'job_months_min', 'asset_backed', 'gst_registered', 'comparable_credit',
   'abn_months_min', 'min_deposit_pct', 'min_loan', 'max_loan', 'min_term_months', 'max_term_months',
-  'max_residual_pct', 'doc_type', 'rate', 'rate_basis', 'source', 'notes'
+  'max_residual_pct', 'doc_type', 'fuel', 'rate', 'rate_basis', 'source', 'notes'
 ];
 // Only these columns ever leave the Sheet. Lender, product, source and notes stay private.
 const PUBLIC_RATE_FIELDS = [
   'id', 'loan_type', 'condition', 'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
   'credit_score_min', 'credit_score_max', 'residential', 'employment', 'job_months_min',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min', 'min_deposit_pct',
-  'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'rate'
+  'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'fuel', 'rate'
 ];
 
 const QUOTE_HEADERS = [
   'received', 'quote_ref', 'action', 'created', 'referrer_name', 'referrer_business', 'referrer_code',
-  'client_name', 'client_first_name', 'client_last_name', 'client_mobile', 'client_email', 'client_consent', 'loan_type', 'vehicle_condition', 'vehicle_year', 'vehicle_age_years', 'balloon_max_pct',
+  'client_name', 'client_first_name', 'client_last_name', 'client_mobile', 'client_email', 'client_consent', 'loan_type', 'vehicle_condition', 'vehicle_fuel', 'vehicle_year', 'vehicle_age_years', 'balloon_max_pct',
   'residential_status', 'employment_status', 'job_time',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_time',
   'vehicle_price', 'deposit', 'amount_financed', 'term_months', 'frequency', 'residual_pct', 'residual_amount',
@@ -128,6 +128,7 @@ function buildEmail_(d) {
     ])],
     ['Vehicle and loan', [
       ['Vehicle', v(d.vehicle_year) ? `${v(d.vehicle_condition) ? d.vehicle_condition + ', ' : ''}${d.vehicle_year} (${d.vehicle_age_years} years old)` : ''],
+      ['Fuel type', v(d.vehicle_fuel)],
       ['Vehicle price', money(d.vehicle_price)],
       ['Deposit or trade in', money(d.deposit)],
       ['Amount financed', money(d.amount_financed)],

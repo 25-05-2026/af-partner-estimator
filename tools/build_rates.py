@@ -17,7 +17,7 @@ CODES = {'RACV': 'RV', 'Latitude': 'LT', 'Westpac': 'WP', 'Angle': 'AN', 'Metro'
 PUBLIC = ['id', 'loan_type', 'condition', 'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
           'credit_score_min', 'credit_score_max', 'residential', 'employment', 'job_months_min',
           'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min', 'min_deposit_pct',
-          'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'rate']
+          'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'fuel', 'rate']
 MASTER = ['id', 'active', 'status_note', 'lender', 'product'] + PUBLIC[1:] + ['rate_basis', 'source', 'notes']
 
 # Lenders that price on their own risk grade with no credit score mapping: the cheapest grade would
@@ -33,8 +33,6 @@ def status(code, r):
         return RISK_GRADED[code]
     if code == 'WP':
         return 'Westpac Xpress special caps brokerage at 3%; AF charges 4% on commercial'
-    if 'electric' in r['product'].lower():
-        return 'Electric vehicle pricing (we do not ask if the car is electric)'
     if 'spring promo' in r['product'].lower():
         return 'Promo stacked on the 2% broker discount; card does not confirm they combine'
     return ''
@@ -50,10 +48,27 @@ for r in rows:
     counters[code] = counters.get(code, 0) + 1
     r = dict(r)
     r['id'] = f'{code}-{counters[code]:03d}'
+    r.setdefault('fuel', '')
+    if 'electric' in r['product'].lower():
+        r['fuel'] = 'hybrid,bev'   # Resimac EV pricing covers fully electric, hybrid and plug-in hybrid
     note = status(code, r)
     r['status_note'] = note
     r['active'] = 'N' if note else 'Y'
     out.append(r)
+
+# Plenti: battery EV 0.50% p.a. discount, minimum score 600. Add a fully electric copy of each active row.
+extra = []
+for r in out:
+    if r['id'].startswith('PL-') and r['active'] == 'Y':
+        e = dict(r)
+        counters['PL'] += 1
+        e['id'] = f"PL-{counters['PL']:03d}"
+        e['fuel'] = 'bev'
+        e['rate'] = round(float(r['rate']) - 0.5, 2)
+        e['credit_score_min'] = max(600, int(r['credit_score_min'] or 0))
+        e['product'] = r['product'] + ' (battery EV discount 0.50%)'
+        extra.append(e)
+out += extra
 
 os.makedirs(os.path.join(ROOT, 'private'), exist_ok=True)
 with open(os.path.join(ROOT, 'private', 'rates-master.csv'), 'w', newline='', encoding='utf-8-sig') as f:

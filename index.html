@@ -251,6 +251,15 @@
               <button type="button" data-val="used">Used or demo</button>
             </div>
           </div>
+          <div class="field" data-req="fuel">
+            <span class="label" id="lblFuel">Fuel type</span>
+            <div class="seg" role="group" aria-labelledby="lblFuel" data-key="fuel">
+              <button type="button" data-val="ice">Petrol or diesel</button>
+              <button type="button" data-val="hybrid">Hybrid or plug-in</button>
+              <button type="button" data-val="bev">Fully electric</button>
+            </div>
+            <div class="hint">Some lenders have sharper rates for electric and hybrid vehicles.</div>
+          </div>
           <div class="field" id="fYear">
             <label class="label" for="year">Year of manufacture</label>
             <select id="year"></select>
@@ -489,7 +498,7 @@ const store = {
 let RATES = { settings: {}, tiers: [] };
 const S = () => RATES.settings;
 const state = {
-  loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0,
+  loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0,
   residential: '', employment: '', jobMonths: '', creditScore: '',
   assetBacked: '', gst: '', compCredit: '', abnMonths: ''
 };
@@ -523,7 +532,7 @@ function normaliseRates(raw) {
   };
   const tiers = (raw.tiers || []).filter(t => yn(t.active) !== false && num(t.rate) !== null).map(t => ({
     id: String(t.id || ''), lender: String(t.lender || ''), tier: String(t.tier || ''),
-    loanType: norm(t.loan_type), condition: list(t.condition),
+    loanType: norm(t.loan_type), condition: list(t.condition), fuel: list(t.fuel),
     ageMin: num(t.vehicle_age_min), ageMax: num(t.vehicle_age_max), ageEndMax: num(t.age_at_end_max),
     residential: list(t.residential), employment: list(t.employment), jobMonthsMin: num(t.job_months_min),
     assetBacked: yn(t.asset_backed), gst: yn(t.gst_registered), compCredit: yn(t.comparable_credit), abnMonthsMin: num(t.abn_months_min),
@@ -583,6 +592,7 @@ function residualFor(term) { return Math.min(state.residualPct, balloonLimit(ter
 function tierMatches(t, c) {
   if (t.loanType !== c.loanType) return false;
   if (t.condition.length && !t.condition.includes(c.condition)) return false;
+  if (t.fuel.length && !t.fuel.includes(c.fuel)) return false;
   if (t.scoreMin !== null && c.score < t.scoreMin) return false;
   if (t.scoreMax !== null && c.score > t.scoreMax) return false;
   if (t.minTerm !== null && c.term < t.minTerm) return false;
@@ -618,6 +628,7 @@ function calc(term) {
 
   const missing = [];
   if (state.condition === '') missing.push('New or used');
+  if (state.fuel === '') missing.push('Fuel type');
   if (state.year === '') missing.push('Year of manufacture');
   REQUIRED[state.loanType].forEach(([k, l]) => { if (state[k] === '') missing.push(l); });
   if (price <= 0) missing.push('Vehicle price');
@@ -630,7 +641,7 @@ function calc(term) {
   }
 
   const ctx = {
-    loanType: state.loanType, condition: state.condition, age: vehicleAge(), term, financed, depositPct, residualPct,
+    loanType: state.loanType, condition: state.condition, fuel: state.fuel, age: vehicleAge(), term, financed, depositPct, residualPct,
     residential: state.residential, employment: state.employment, jobMonths: +state.jobMonths, score: scoreValue(),
     assetBacked: state.assetBacked, gst: state.gst, compCredit: state.compCredit, abnMonths: +state.abnMonths
   };
@@ -880,6 +891,7 @@ function buildPayload(ref, action) {
     client_mobile: client().mobile, client_email: client().email, client_consent: client().consent ? 'Yes' : 'No',
     loan_type: LABELS.loanType[state.loanType],
     vehicle_condition: state.condition === 'new' ? 'New' : state.condition === 'used' ? 'Used or demo' : '',
+    vehicle_fuel: { ice: 'Petrol or diesel', hybrid: 'Hybrid or plug-in hybrid', bev: 'Fully electric' }[state.fuel] || '',
     vehicle_year: state.year, vehicle_age_years: vehicleAge(), balloon_max_pct: balloonLimit(state.term),
     residential_status: isCom ? '' : LABELS.residential[state.residential] || '',
     employment_status: isCom ? '' : LABELS.employment[state.employment] || '',
@@ -961,7 +973,7 @@ $('printBtn').addEventListener('click', async () => {
   window.print();
 });
 $('resetBtn').addEventListener('click', () => {
-  Object.assign(state, { loanType: 'consumer', condition: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
+  Object.assign(state, { loanType: 'consumer', condition: '', fuel: '', year: '', term: 60, freq: 'monthly', residualPct: 0, residential: '', employment: '', jobMonths: '', creditScore: '', assetBacked: '', gst: '', compCredit: '', abnMonths: '' });
   ['year','jobMonths','abnMonths','creditScore'].forEach(id => $(id).value = '');
   $('price').value = '45,000'; $('deposit').value = '0';
   touched = false; lastSaved = null; $('savedMsg').hidden = true; ACK = '';
