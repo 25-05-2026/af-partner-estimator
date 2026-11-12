@@ -846,6 +846,7 @@ $('gGo').addEventListener('click', () => {
   REF = { name: $('gName').value.trim(), business: $('gBiz').value.trim() };
   ACK = new Date().toISOString();
   $('gate').hidden = true; showWho(); render();
+  window.scrollTo(0, 0);   // always start at the top of the form
 });
 
 /* ---------- Capture ---------- */
@@ -990,6 +991,7 @@ $('resetBtn').addEventListener('click', () => {
 });
 
 /* ---------- Start ---------- */
+try { history.scrollRestoration = 'manual'; } catch {}   // a refresh never jumps back down the page
 (async function init() {
   buildYears();
   try { RATES = await loadRates(); }
