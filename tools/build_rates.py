@@ -70,6 +70,20 @@ for r in out:
         extra.append(e)
 out += extra
 
+# Metro: 1% p.a. off for fully electric commercial vehicles (Michael, 2026-11-12).
+extra = []
+for r in out:
+    if r['id'].startswith('MT-') and r['active'] == 'Y' and not r.get('fuel'):
+        e = dict(r)
+        counters['MT'] += 1
+        e['id'] = f"MT-{counters['MT']:03d}"
+        e['fuel'] = 'bev'
+        e['rate'] = round(float(r['rate']) - 1.0, 2)
+        e['product'] = r['product'] + ' (electric vehicle discount 1%)'
+        e['notes'] = 'EV discount 1% advised by Michael 2026-11-12, not on the card. ' + r['notes']
+        extra.append(e)
+out += extra
+
 os.makedirs(os.path.join(ROOT, 'private'), exist_ok=True)
 with open(os.path.join(ROOT, 'private', 'rates-master.csv'), 'w', newline='', encoding='utf-8-sig') as f:
     w = csv.DictWriter(f, fieldnames=MASTER, extrasaction='ignore')
