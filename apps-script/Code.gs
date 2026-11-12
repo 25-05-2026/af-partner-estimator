@@ -23,14 +23,14 @@ const RATE_HEADERS = [
   'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max', 'credit_score_min', 'credit_score_max',
   'residential', 'employment', 'job_months_min', 'asset_backed', 'gst_registered', 'comparable_credit',
   'abn_months_min', 'min_deposit_pct', 'min_loan', 'max_loan', 'min_term_months', 'max_term_months',
-  'max_residual_pct', 'doc_type', 'fuel', 'rate', 'rate_basis', 'source', 'notes'
+  'max_residual_pct', 'doc_type', 'fuel', 'brokerage_pct', 'rate', 'rate_basis', 'source', 'notes'
 ];
 // Only these columns ever leave the Sheet. Lender, product, source and notes stay private.
 const PUBLIC_RATE_FIELDS = [
   'id', 'loan_type', 'condition', 'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
   'credit_score_min', 'credit_score_max', 'residential', 'employment', 'job_months_min',
   'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min', 'min_deposit_pct',
-  'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'fuel', 'rate'
+  'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'fuel', 'brokerage_pct', 'rate'
 ];
 
 const QUOTE_HEADERS = [
@@ -267,7 +267,7 @@ function setup() {
       ['maxTermMonths', 84, 'Longest term offered'],
       ['residualMaxPct', 40, 'Hard cap on any balloon. The Balloons tab sets the limit by vehicle and term.'],
       ['residualBase', 'price', 'price = residual is a % of vehicle price, naf = % of total amount financed'],
-      ['nonAssetBackedMinDepositPct', 20, 'Minimum deposit for non asset backed commercial clients'],
+      ['nonAssetBackedMinDepositPct', 20, 'Minimum deposit for commercial renters (not asset backed) without comparable credit. Boarders are not offered commercial.'],
       ['consumerFreqs', 'weekly,fortnightly,monthly', 'Frequencies offered to consumer clients'],
       ['commercialFreqs', 'monthly', 'Frequencies offered to commercial clients'],
       ['commercialInAdvance', 'N', 'Y = commercial repayments calculated in advance'],

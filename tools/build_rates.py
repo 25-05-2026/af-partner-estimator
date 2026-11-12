@@ -17,7 +17,7 @@ CODES = {'RACV': 'RV', 'Latitude': 'LT', 'Westpac': 'WP', 'Angle': 'AN', 'Metro'
 PUBLIC = ['id', 'loan_type', 'condition', 'vehicle_age_min', 'vehicle_age_max', 'age_at_end_max',
           'credit_score_min', 'credit_score_max', 'residential', 'employment', 'job_months_min',
           'asset_backed', 'gst_registered', 'comparable_credit', 'abn_months_min', 'min_deposit_pct',
-          'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'fuel', 'rate']
+          'min_loan', 'max_loan', 'min_term_months', 'max_term_months', 'max_residual_pct', 'doc_type', 'fuel', 'brokerage_pct', 'rate']
 MASTER = ['id', 'active', 'status_note', 'lender', 'product'] + PUBLIC[1:] + ['rate_basis', 'source', 'notes']
 
 # Lenders that price on their own risk grade with no credit score mapping: the cheapest grade would
@@ -31,10 +31,12 @@ def status(code, r):
     text = (r['product'] + ' ' + r['notes']).lower()
     if code in RISK_GRADED:
         return RISK_GRADED[code]
+    if code == 'PP' and 'Tier A' not in r['product']:
+        return 'Pepper commercial is for asset backed clients only (Michael, 2026-11-12)'
     if code == 'PP' and 'private sale' in r['product'].lower():
         return 'Private sale pricing (partners quote dealer sales)'
-    if code == 'WP':
-        return 'Westpac Xpress special caps brokerage at 3%; AF charges 4% on commercial'
+    if code == 'WP' and 'private sale' in (r['product'] + r['notes']).lower():
+        return 'Private sale pricing (partners quote dealer sales)'
     if 'spring promo' in r['product'].lower():
         return 'Promo stacked on the 2% broker discount; card does not confirm they combine'
     return ''
@@ -51,6 +53,9 @@ for r in rows:
     r = dict(r)
     r['id'] = f'{code}-{counters[code]:03d}'
     r.setdefault('fuel', '')
+    r.setdefault('brokerage_pct', '')
+    if code == 'WP':
+        r['brokerage_pct'] = 3   # Westpac Xpress special caps brokerage at 3% (Michael: quote it at 3%)
     # Pepper tiers (Michael, 2026-11-12): A = asset backed, B = renter, C = boarder
     if code == 'PP':
         tier = 'A' if 'Tier A' in r['product'] else 'B' if 'Tier B' in r['product'] else 'C'
@@ -77,17 +82,18 @@ for r in out:
         extra.append(e)
 out += extra
 
-# Metro: 1% p.a. off for fully electric commercial vehicles (Michael, 2026-11-12).
+# Metro (Michael, 2026-11-12) and Westpac (card): 1% p.a. off for fully electric vehicles.
 extra = []
 for r in out:
-    if r['id'].startswith('MT-') and r['active'] == 'Y' and not r.get('fuel'):
+    if r['id'][:3] in ('MT-', 'WP-') and r['active'] == 'Y' and not r.get('fuel'):
+        code = r['id'][:2]
         e = dict(r)
-        counters['MT'] += 1
-        e['id'] = f"MT-{counters['MT']:03d}"
+        counters[code] += 1
+        e['id'] = f"{code}-{counters[code]:03d}"
         e['fuel'] = 'bev'
         e['rate'] = round(float(r['rate']) - 1.0, 2)
         e['product'] = r['product'] + ' (electric vehicle discount 1%)'
-        e['notes'] = 'EV discount 1% advised by Michael 2026-11-12, not on the card. ' + r['notes']
+        e['notes'] = ('EV discount 1% advised by Michael 2026-11-12, not on the card. ' if code == 'MT' else 'EV discount 1% per card. ') + r['notes']
         extra.append(e)
 out += extra
 

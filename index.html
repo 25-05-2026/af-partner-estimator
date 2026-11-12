@@ -338,7 +338,7 @@
                 <button type="button" data-val="yes">Yes</button>
                 <button type="button" data-val="no">No</button>
               </div>
-              <div class="hint" id="assetHint">Owns or is paying off property. Non asset backed clients need at least a 20% deposit.</div>
+              <div class="hint" id="assetHint">Owns or is paying off property.</div>
             </div>
             <div class="field" id="comLivingField" hidden>
               <span class="label" id="lblLiving">Renting or boarding?</span>
@@ -545,7 +545,7 @@ function normaliseRates(raw) {
     assetBacked: yn(t.asset_backed), gst: yn(t.gst_registered), compCredit: yn(t.comparable_credit), abnMonthsMin: num(t.abn_months_min),
     minDepositPct: num(t.min_deposit_pct),
     rate: num(t.rate), scoreMin: num(t.credit_score_min), scoreMax: num(t.credit_score_max),
-    minTerm: num(t.min_term_months), docTypes: list(t.doc_type),
+    minTerm: num(t.min_term_months), docTypes: list(t.doc_type), brokeragePct: num(t.brokerage_pct),
     minLoan: num(t.min_loan), maxLoan: num(t.max_loan), maxTerm: num(t.max_term_months), maxResidualPct: num(t.max_residual_pct)
   }));
   const src = Array.isArray(raw.balloons) && raw.balloons.length ? raw.balloons : DEFAULT_BALLOONS;
@@ -633,6 +633,10 @@ function calc(term) {
   const residualPct = residualFor(term);
   const out = { status: 'ok', price, deposit, financed, depositPct, residualPct, term, freq: FREQ[state.freq] };
 
+  if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === 'boarding') {
+    return Object.assign(out, { status: 'error', message: 'Commercial loans are not available to clients who are boarding. Submit the estimate and our team will look at the options.' });
+  }
+
   const missing = [];
   if (state.condition === '') missing.push('New or used');
   if (state.fuel === '') missing.push('Fuel type');
@@ -644,8 +648,8 @@ function calc(term) {
 
   if (deposit >= price) return Object.assign(out, { status: 'error', message: 'The deposit must be less than the vehicle price.' });
   const minDep = S().nonAssetBackedMinDepositPct;
-  if (state.loanType === 'commercial' && state.assetBacked === 'no' && depositPct + 1e-9 < minDep) {
-    return Object.assign(out, { status: 'error', message: `Non asset backed clients need a deposit of at least ${minDep}% (${money(Math.ceil(price * minDep / 100), 0)}).` });
+  if (state.loanType === 'commercial' && state.assetBacked === 'no' && state.comLiving === 'renting' && state.compCredit !== 'yes' && depositPct + 1e-9 < minDep) {
+    return Object.assign(out, { status: 'error', message: `Renters without comparable credit need a deposit of at least ${minDep}% (${money(Math.ceil(price * minDep / 100), 0)}).` });
   }
 
   const ctx = {
@@ -659,7 +663,7 @@ function calc(term) {
   let best = null;
   const c0 = ctx;
   RATES.tiers.filter(t => tierMatches(t, ctx)).forEach(t => {
-    const brokerage = Math.round(financed * S().brokeragePct[c0.loanType]) / 100;
+    const brokerage = Math.round(financed * (t.brokeragePct ?? S().brokeragePct[c0.loanType])) / 100;
     const naf = financed + brokerage + S().establishmentFee + S().originationFee;
     const residual = Math.round((S().residualBase === 'naf' ? naf : price) * residualPct) / 100;
     const amount = repayment(naf, t.rate, term, f.perYear, residual, inAdv);
@@ -737,8 +741,8 @@ function render() {
 
   // Deposit hint
   const minDep = S().nonAssetBackedMinDepositPct;
-  $('depHint').textContent = isCom && state.assetBacked === 'no' ? `Minimum ${minDep}% for non asset backed` : 'Optional';
-  $('assetHint').textContent = `Owns or is paying off property. Non asset backed clients need at least a ${minDep}% deposit.`;
+  $('depHint').textContent = isCom && state.assetBacked === 'no' && state.comLiving === 'renting' && state.compCredit !== 'yes' ? `Minimum ${minDep}% for renters without comparable credit` : 'Optional';
+  $('assetHint').textContent = `Owns or is paying off property. Renters need at least a ${minDep}% deposit unless they have comparable credit. Not available to boarders.`;
 
   const r = calc(state.term);
 
@@ -773,7 +777,7 @@ function render() {
   }
   $('resRows').innerHTML = rows.map(([k, v]) => `<div class="row"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('');
 
-  const savable = r.status === 'ok' || r.status === 'nomatch';
+  const savable = r.status === 'ok' || r.status === 'nomatch' || (r.status === 'error' && state.comLiving === 'boarding' && state.loanType === 'commercial');
   $('saveBtn').disabled = !savable;
   $('printBtn').disabled = !ok;
   const sig = signature();
