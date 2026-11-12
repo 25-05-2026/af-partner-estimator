@@ -84,7 +84,7 @@ prints on the PDF. Offline saves queue on the device and send next time the page
 
 Give each partner their own link with `?ref=CODE` (e.g. `...?ref=SMITHMOTORS`) to tag their quotes.
 
-Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client (name, mobile, email), the referring partner and the estimate. Every page load (and New client) opens a start screen that asks for the referrer, the client (first name, last name, mobile, optional email, consent) and the indicative only acknowledgement. Nothing is remembered between page loads, so several referrers can share one device. Run `testEmail` from the editor to see a sample.
+Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client (name, mobile, email), the referring partner and the estimate. Every page load (and New client) opens a start screen that asks for the referrer, the client (first name, last name, mobile, email, consent) and the indicative only acknowledgement. Nothing is remembered between page loads, so several referrers can share one device. Run `testEmail` from the editor to see a sample.
 
 ## Local preview
 

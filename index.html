@@ -203,7 +203,7 @@
     <div class="field">
       <div class="two">
         <div><label class="label" for="cPhone">Mobile</label><input class="txt" id="cPhone" inputmode="tel" autocomplete="off" placeholder="04xx xxx xxx"></div>
-        <div><label class="label" for="cEmail">Email <span class="opt">(optional)</span></label><input class="txt" id="cEmail" type="email" inputmode="email" autocomplete="off"></div>
+        <div><label class="label" for="cEmail">Email</label><input class="txt" id="cEmail" type="email" inputmode="email" autocomplete="off"></div>
       </div>
     </div>
     <div class="field">
@@ -879,7 +879,8 @@ function clientProblems() {
   if (!c.first) p.push(['cFirst', 'Client first name']);
   if (!c.last) p.push(['cLast', 'Client last name']);
   if (!c.mobile) p.push(['cPhone', $('cPhone').value.trim() ? 'A valid Australian mobile (04xx xxx xxx)' : 'Client mobile']);
-  if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) p.push(['cEmail', 'A valid email, or leave it blank']);
+  if (!c.email) p.push(['cEmail', 'Client email']);
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) p.push(['cEmail', 'A valid client email']);
   if (!c.consent) p.push(['cConsent', 'The client\'s agreement to share their details']);
   return p;
 }
