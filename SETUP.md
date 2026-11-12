@@ -86,6 +86,16 @@ Give each partner their own link with `?ref=CODE` (e.g. `...?ref=SMITHMOTORS`) t
 
 Each submitted estimate emails `notify_email` (set to milo@acquiredfinance.com by default) with the client (name, mobile, email), the referring partner and the estimate. Every page load (and New client) opens a start screen that asks for the referrer, the client (first name, last name, mobile, email, consent) and the indicative only acknowledgement. Nothing is remembered between page loads, so several referrers can share one device. Run `testEmail` from the editor to see a sample.
 
+## Live connection
+
+Sheet: AF Partner Estimator (owned by the Google account that deployed it). The web app URL is in
+`CONFIG.apiUrl` in index.html.
+
+- Update rates from a new build: `python -I tools/build_rates.py <folder>` then `python -I tools/push_rates.py`
+  (needs private/import.json with the url and the import_key from the Settings tab).
+- After changing Code.gs: paste it into Apps Script, save, then Deploy > Manage deployments > edit >
+  Version: New version. This keeps the same URL.
+
 ## Local preview
 
 `af-referrer-calculator` in `~/.claude/.claude/launch.json`, port 8772.
