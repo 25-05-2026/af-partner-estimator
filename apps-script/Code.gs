@@ -54,6 +54,7 @@ function doPost(e) {
   try { data = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: 'bad json' }); }
 
   const settings = readSettings_();
+  if (data.action === 'import_rates' || data.action === 'import_balloons') return importTable_(data, settings);
   if (settings.capture_key && data.key !== settings.capture_key) return json_({ ok: false, error: 'bad key' });
   delete data.key;
   data.received = new Date();
@@ -197,6 +198,33 @@ function testEmail() {
   MailApp.sendEmail({ to: String(to), subject: '[TEST] ' + mail.subject, body: mail.text, htmlBody: mail.html, name: 'AF Partner Estimator' });
 }
 
+/* ---------------- Rate loader ----------------
+   Replaces the whole Rates (or Balloons) tab with rows sent from the rate build on Michael's computer.
+   Only works when the request carries the import_key from the Settings tab. */
+function importTable_(data, settings) {
+  const key = String(settings.import_key || '');
+  if (!key || data.import_key !== key) return json_({ ok: false, error: 'bad import key' });
+  const rows = data.rows;
+  if (!Array.isArray(rows) || rows.length < 2 || !Array.isArray(rows[0])) return json_({ ok: false, error: 'no rows' });
+  const width = rows[0].length;
+  if (rows.some(r => !Array.isArray(r) || r.length !== width)) return json_({ ok: false, error: 'ragged rows' });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = sheet_(data.action === 'import_balloons' ? TAB_BALLOONS : TAB_RATES);
+    sh.clearContents();
+    if (sh.getMaxColumns() < width) sh.insertColumnsAfter(sh.getMaxColumns(), width - sh.getMaxColumns());
+    if (sh.getMaxRows() < rows.length) sh.insertRowsAfter(sh.getMaxRows(), rows.length - sh.getMaxRows());
+    sh.getRange(1, 1, rows.length, width).setValues(rows);
+    sh.getRange(1, 1, 1, width).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    stampUpdated_();
+  } finally {
+    lock.releaseLock();
+  }
+  return json_({ ok: true, rows: rows.length - 1 });
+}
+
 /* ---------------- Rate card ---------------- */
 
 function getRateCard_() {
@@ -217,6 +245,7 @@ function getRateCard_() {
   const publicSettings = Object.assign({}, settings);
   delete publicSettings.capture_key;
   delete publicSettings.notify_email;
+  delete publicSettings.import_key;
   const updated = settings.updated instanceof Date ? Utilities.formatDate(settings.updated, 'Australia/Sydney', 'yyyy-MM-dd') : String(settings.updated || '');
 
   return { version: String(settings.version || updated), updated: updated, sample: false, settings: publicSettings, tiers: tiers, balloons: readTable_(TAB_BALLOONS) };
@@ -243,6 +272,10 @@ function readSettings_() {
 /** Stamp Settings > updated whenever the Rates tab is edited, so partners see when rates last changed. */
 function onEdit(e) {
   if (!e || [TAB_RATES, TAB_BALLOONS].indexOf(e.range.getSheet().getName()) === -1) return;
+  stampUpdated_();
+}
+
+function stampUpdated_() {
   const sh = sheet_(TAB_SETTINGS);
   const rows = sh.getRange(2, 1, Math.max(sh.getLastRow() - 1, 1), 1).getValues();
   for (let i = 0; i < rows.length; i++) {
@@ -275,6 +308,7 @@ function setup() {
       ['commercialInAdvance', 'N', 'Y = commercial repayments calculated in advance'],
       ['notify_email', 'milo@acquiredfinance.com', 'Who gets an email for each submitted estimate. Separate several addresses with commas.'],
       ['capture_key', '', 'Optional shared key. Must match captureKey in index.html'],
+      ['import_key', '', 'Secret key that lets the rate loader replace the Rates or Balloons tab. Blank = loader off.'],
       ['establishmentFee', 550, 'Added to every loan'],
       ['originationFee', 1250, 'Added to every loan'],
       ['commercialBrokeragePct', 4, 'Brokerage % of amount financed, added to commercial loans'],
